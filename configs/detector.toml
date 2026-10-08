@@ -1,0 +1,79 @@
+# =============================================================================
+# S5 detector: architecture, synthetic-training-data generator, training.
+# EVERYTHING in this file is [REPLACEMENT] / engineering: none of it comes from the paper
+# (the paper's S5 detector, reference [31], is unavailable). [L30] (Li et al. 2020) was used only
+# as methodological inspiration (synthetic injection of whistle-like shapes into whistle-free
+# backgrounds, per-node confidence maps); no numerical parameter was copied from it.
+#
+# S5 contract (see src/whistlepipe/detector/interface.py):
+#   input : S4 log-magnitude spectrogram (T, 1025) float32 dB, grid 93.75 Hz x 5.333 ms
+#   output: confidence map (T, F_band) float32 in [0, 1], one value per S4 node, band = bins [k_lo, k_hi]
+# =============================================================================
+schema_version = 1
+
+[model]
+name       = "ridgenet"
+version    = "ridgenet-v1"
+channels   = 16
+# (time, frequency) dilation of each 3x3 conv block. Receptive field is computed and reported by the code.
+dilations  = [[1, 1], [2, 1], [4, 2], [8, 2], [1, 1], [2, 1]]
+
+[synth]
+seed                 = 20261008
+window_s             = 3.0      # background window length (long enough for the local noise-floor estimate)
+crop_frames          = 256      # training patch length in STFT frames (1.37 s)
+
+[synth.backgrounds]
+n_files              = { train = 24, val = 16, test = 16 }   # distinct raw files per split; none from the validation sets
+windows_per_file     = { train = 20, val = 12, test = 12 }
+candidates_per_file  = 60       # candidate windows ranked by ridge score; the lowest-scoring are kept
+screen_db            = 8.0      # node counts as "tonal" if this many dB above the local floor ...
+screen_persist       = 9        # ... in >= 70 % of a 9-frame span ...
+screen_fraction      = 0.7
+screen_guard_bins    = [3, 5]   # ... and its neighbours at +/-3..5 bins are NOT persistent (narrow-band)
+screen_max_score     = 0.02     # keep only windows whose ridge score <= this (a single 0.3 s whistle scores ~0.10)
+
+[synth.whistles]
+p_n_whistles         = [0.10, 0.25, 0.25, 0.18, 0.12, 0.10]   # probability of 0..5 whistles in a window
+p_scenario           = { random = 0.7, crossing = 0.15, parallel = 0.15 }
+duration_s           = [0.10, 1.00]     # log-uniform
+f_range_hz           = [2300.0, 23700.0]
+slope_max_hz_per_s   = 60000.0
+n_knots              = [2, 6]
+p_ripple             = 0.3
+ripple_rate_hz       = [5.0, 20.0]
+ripple_depth_hz      = [30.0, 250.0]
+snr_db               = [-2.0, 24.0]     # peak STFT magnitude of the whistle vs median background magnitude at its mean frequency
+p_harmonic2          = 0.6
+p_harmonic3          = 0.3
+harmonic_rel_db      = [-15.0, -3.0]
+parallel_offset_bins = [2.0, 4.0]
+
+[synth.clicks]
+p_click_train        = 0.6
+n_trains             = [1, 3]
+n_clicks             = [3, 25]
+ici_ms               = [10.0, 80.0]
+center_khz           = [8.0, 70.0]
+decay_ms             = [0.05, 0.30]
+level_db             = [10.0, 35.0]     # above the window's broadband rms
+p_sweep_train        = 0.2              # periodic broadband sweeps (echosounder-like)
+
+[synth.labels]
+sigma_bins           = 0.8      # Gaussian ridge target width across frequency
+snr_pos_db           = 3.0      # ridge nodes below this local SNR are IGNORED (weight 0), not forced negative
+ignore_radius_bins   = 2
+min_envelope         = 0.05
+
+[train]
+steps          = 6000
+batch_size     = 16
+lr             = 3.0e-3
+weight_decay   = 1.0e-4
+pos_weight     = 6.0
+dice_weight    = 1.0
+num_workers    = 6
+val_every      = 500
+val_samples    = 600
+test_samples   = 600
+device         = "auto"

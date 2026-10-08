@@ -1,0 +1,24 @@
+{
+  "version": "ridgenet-v1",
+  "checkpoint_sha256": "58798cb466320335df1eea682c2523234867948f210e8b84377e4d696bc9e4f6",
+  "best_val_node_f1": 0.7177556535198173,
+  "n_params": 14209,
+  "detector_config_hash": "b18e5b935e52d69f9f3141b8cc62a83f7b9af4929ac7aa3fa14385e145d19d0d",
+  "pipeline_config_hash": "4bcc87edc6e930006679c3fe95ff53b5bdcd2f63eb8854f96062f1682e42b5b6",
+  "seed": 20261008,
+  "steps": 6000,
+  "batch_size": 16,
+  "train_wall_s": 2112.4,
+  "software": {
+    "python": "3.11.0",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "numpy": "2.4.4",
+    "scipy": "1.17.1",
+    "soundfile": "0.13.1",
+    "libsndfile": "1.2.2",
+    "torch": "2.14.0+cu130",
+    "cuda_available": true,
+    "cuda_device": "NVIDIA GeForce RTX 5060 Laptop GPU"
+  },
+  "note": "trained on SYNTHETIC data only; node F1 here is a synthetic-validation number, not a real-data score."
+}

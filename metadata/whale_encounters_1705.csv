@@ -1,0 +1,52 @@
+encounter_id,species_id,common_name,scientific_name,utc_start,utc_end,duration_minutes,file_start_prefix,file_end_prefix,gcs_folder
+52,61,Cuvier's beaked whale,Ziphius cavirostris,2017-08-27 21:01:05,2017-08-27 21:06:20,5.2,1705_20170827_2101,1705_20170827_2106,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+54,61,Cuvier's beaked whale,Ziphius cavirostris,2017-08-28 01:20:33,2017-08-28 01:26:16,5.7,1705_20170828_0120,1705_20170828_0126,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+73,59,Blainville's beaked whale,Mesoplodon densirostris,2017-08-31 22:19:08,2017-08-31 22:22:02,2.9,1705_20170831_2219,1705_20170831_2222,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+78,59,Blainville's beaked whale,Mesoplodon densirostris,2017-09-01 16:31:33,2017-09-01 16:35:39,4.1,1705_20170901_1631,1705_20170901_1635,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+83,49,Unidentified beaked whale,Ziphiids,2017-09-02 03:32:48,2017-09-02 05:02:42,89.9,1705_20170902_0332,1705_20170902_0502,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+86,32,Pygmy killer whale,Feresa attenuata,2017-09-02 20:46:13,2017-09-02 21:13:49,27.6,1705_20170902_2046,1705_20170902_2113,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+91,49,Unidentified beaked whale,Ziphiids,2017-09-03 06:41:08,2017-09-03 07:11:31,30.4,1705_20170903_0641,1705_20170903_0711,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+97,46,Sperm whale,Physeter macrocephalus,2017-09-04 19:09:26,2017-09-04 19:48:28,39.0,1705_20170904_1909,1705_20170904_1948,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+98,46,Sperm whale,Physeter macrocephalus,2017-09-04 19:57:09,2017-09-04 23:25:17,208.1,1705_20170904_1957,1705_20170904_2325,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+103,65,Longman's beaked whale,Indopacetus pacificus,2017-09-04 23:31:18,2017-09-04 23:34:07,2.8,1705_20170904_2331,1705_20170904_2334,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+105,46,Sperm whale,Physeter macrocephalus,2017-09-05 01:46:54,2017-09-05 02:08:37,21.7,1705_20170905_0146,1705_20170905_0208,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+173,59,Blainville's beaked whale,Mesoplodon densirostris,2017-09-27 01:04:28,2017-09-27 01:05:16,0.8,1705_20170927_0104,1705_20170927_0105,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+175,46,Sperm whale,Physeter macrocephalus,2017-09-27 02:45:12,2017-09-27 02:57:20,12.1,1705_20170927_0245,1705_20170927_0257,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+179,59,Blainville's beaked whale,Mesoplodon densirostris,2017-09-27 21:42:12,2017-09-27 21:42:30,0.3,1705_20170927_2142,1705_20170927_2142,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+181,46,Sperm whale,Physeter macrocephalus,2017-09-28 04:13:39,2017-09-28 04:52:23,38.7,1705_20170928_0413,1705_20170928_0452,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+191,33,False killer whale,Pseudorca crassidens,2017-09-29 22:49:48,2017-09-30 04:53:44,363.9,1705_20170929_2249,1705_20170930_0453,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+192,31,Melon-headed whale,Peponocephala electra,2017-09-30 01:30:32,2017-09-30 03:01:27,90.9,1705_20170930_0130,1705_20170930_0301,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+194,61,Cuvier's beaked whale,Ziphius cavirostris,2017-10-01 19:45:55,2017-10-01 19:52:07,6.2,1705_20171001_1945,1705_20171001_1952,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+196,46,Sperm whale,Physeter macrocephalus,2017-10-02 03:09:20,2017-10-02 03:42:47,33.5,1705_20171002_0309,1705_20171002_0342,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+214,33,False killer whale,Pseudorca crassidens,2017-10-09 23:13:22,2017-10-10 01:17:08,123.8,1705_20171009_2313,1705_20171010_0117,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+235,46,Sperm whale,Physeter macrocephalus,2017-10-22 17:17:06,2017-10-22 17:56:59,39.9,1705_20171022_1717,1705_20171022_1756,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+236,46,Sperm whale,Physeter macrocephalus,2017-10-22 18:37:59,2017-10-22 18:52:42,14.7,1705_20171022_1837,1705_20171022_1852,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+240,46,Sperm whale,Physeter macrocephalus,2017-10-22 22:18:36,2017-10-22 22:27:14,8.6,1705_20171022_2218,1705_20171022_2227,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+243,61,Cuvier's beaked whale,Ziphius cavirostris,2017-10-23 03:40:41,2017-10-23 03:42:05,1.4,1705_20171023_0340,1705_20171023_0342,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+246,46,Sperm whale,Physeter macrocephalus,2017-10-25 20:35:38,2017-10-25 22:28:44,113.1,1705_20171025_2035,1705_20171025_2228,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+264,46,Sperm whale,Physeter macrocephalus,2017-10-28 17:39:21,2017-10-28 20:14:41,155.3,1705_20171028_1739,1705_20171028_2014,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+265,36,Short-finned pilot whale,Globicephala macrorhynchus,2017-10-28 19:47:10,2017-10-28 19:52:53,5.7,1705_20171028_1947,1705_20171028_1952,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+266,46,Sperm whale,Physeter macrocephalus,2017-10-28 20:09:14,2017-10-28 22:14:19,125.1,1705_20171028_2009,1705_20171028_2214,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+268,61,Cuvier's beaked whale,Ziphius cavirostris,2017-10-28 23:05:49,2017-10-28 23:13:48,8.0,1705_20171028_2305,1705_20171028_2313,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+269,46,Sperm whale,Physeter macrocephalus,2017-10-29 02:11:22,2017-10-29 02:20:29,9.1,1705_20171029_0211,1705_20171029_0220,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+276,33,False killer whale,Pseudorca crassidens,2017-11-01 02:40:50,2017-11-01 04:40:48,120.0,1705_20171101_0240,1705_20171101_0440,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+278,59,Blainville's beaked whale,Mesoplodon densirostris,2017-11-02 22:37:06,2017-11-02 22:37:24,0.3,1705_20171102_2237,1705_20171102_2237,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+279,33,False killer whale,Pseudorca crassidens,2017-11-02 23:15:39,2017-11-03 01:41:00,145.3,1705_20171102_2315,1705_20171103_0141,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+280,33,False killer whale,Pseudorca crassidens,2017-11-03 01:41:12,2017-11-03 03:25:09,104.0,1705_20171103_0141,1705_20171103_0325,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+303,61,Cuvier's beaked whale,Ziphius cavirostris,2017-11-06 19:49:42,2017-11-06 19:55:35,5.9,1705_20171106_1949,1705_20171106_1955,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+304,46,Sperm whale,Physeter macrocephalus,2017-11-06 22:24:49,2017-11-06 23:15:32,50.7,1705_20171106_2224,1705_20171106_2315,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+306,46,Sperm whale,Physeter macrocephalus,2017-11-07 00:04:04,2017-11-07 02:09:15,125.2,1705_20171107_0004,1705_20171107_0209,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+308,33,False killer whale,Pseudorca crassidens,2017-11-07 17:02:30,2017-11-07 19:44:02,161.5,1705_20171107_1702,1705_20171107_1944,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+318,59,Blainville's beaked whale,Mesoplodon densirostris,2017-11-08 17:20:43,2017-11-08 17:23:34,2.9,1705_20171108_1720,1705_20171108_1723,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+331,33,False killer whale,Pseudorca crassidens,2017-11-17 18:33:19,2017-11-18 00:03:42,330.4,1705_20171117_1833,1705_20171118_0003,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+332,59,Blainville's beaked whale,Mesoplodon densirostris,2017-11-17 19:33:35,2017-11-17 19:34:11,0.6,1705_20171117_1933,1705_20171117_1934,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+333,59,Blainville's beaked whale,Mesoplodon densirostris,2017-11-17 21:20:59,2017-11-17 21:23:44,2.8,1705_20171117_2120,1705_20171117_2123,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+334,59,Blainville's beaked whale,Mesoplodon densirostris,2017-11-17 22:45:11,2017-11-17 22:48:32,3.4,1705_20171117_2245,1705_20171117_2248,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+337,46,Sperm whale,Physeter macrocephalus,2017-11-18 03:41:28,2017-11-18 03:43:56,2.5,1705_20171118_0341,1705_20171118_0343,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+351,59,Blainville's beaked whale,Mesoplodon densirostris,2017-11-21 00:03:13,2017-11-21 00:12:41,9.5,1705_20171121_0003,1705_20171121_0012,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+352,46,Sperm whale,Physeter macrocephalus,2017-11-21 02:00:08,2017-11-21 03:00:34,60.4,1705_20171121_0200,1705_20171121_0300,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+375,61,Cuvier's beaked whale,Ziphius cavirostris,2017-11-23 23:11:22,2017-11-23 23:18:35,7.2,1705_20171123_2311,1705_20171123_2318,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+392,46,Sperm whale,Physeter macrocephalus,2017-11-26 18:03:54,2017-11-26 18:29:31,25.6,1705_20171126_1803,1705_20171126_1829,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+416,33,False killer whale,Pseudorca crassidens,2017-11-30 22:47:04,2017-11-30 23:53:09,66.1,1705_20171130_2247,1705_20171130_2353,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+420,46,Sperm whale,Physeter macrocephalus,2017-12-01 02:26:54,2017-12-01 02:40:06,13.2,1705_20171201_0226,1705_20171201_0240,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/
+421,65,Longman's beaked whale,Indopacetus pacificus,2017-12-01 02:28:35,2017-12-01 03:21:26,52.9,1705_20171201_0228,1705_20171201_0321,gs://noaa-passive-bioacoustic/dclde/2022/dclde_2022_1705/audio/

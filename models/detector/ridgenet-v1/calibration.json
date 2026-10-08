@@ -1,0 +1,9 @@
+{
+  "split_used": "val",
+  "tau": 0.5,
+  "criterion": "among thresholds with <= 2 false tracks/min on the contamination-free surrogate negatives and track recall within 0.01 of the best, take the one closest to 0.5",
+  "track_recall": 0.7034035656401945,
+  "false_tracks_per_min_surrogate_negative": 0.0,
+  "recall_spread_over_grid": 0.014586709886547866,
+  "note": "Synthetic validation is nearly flat in tau, so the data do not select a precise value; 0.5 is the natural decision boundary of the BCE-trained confidence. Copy into configs/pipeline.toml decisions.s6.peak_threshold ONCE, before the real-data phases. Not tuned on real data and not tuned to any paper count."
+}

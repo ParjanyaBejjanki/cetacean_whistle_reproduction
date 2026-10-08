@@ -1,0 +1,161 @@
+# =============================================================================
+# whistlepipe pipeline configuration
+#
+# Authoritative source for the paper-derived parts: resources/PREPROCESSING_SPECIFICATION.md
+#
+# Every parameter carries one of these tags:
+#   [EXPLICIT]  stated by the paper               (specification section 4 / evidence E-xx)
+#   [IMPLIED]   reliably derivable from the paper (derivation in the specification)
+#   [DECISION]  IMPLEMENTATION DECISION: the paper leaves it UNSPECIFIED; this project chose it
+#               to make the pipeline executable. NOT paper evidence.
+#   [REPLACEMENT] part of the newly designed replacement for the unavailable S5/S6 of the paper
+#
+# Section [paper] is LOCKED: config.py refuses to run if any value differs from the specification.
+# =============================================================================
+schema_version = 1
+
+# ---------------------------------------------------------------- PAPER-DEFINED
+[paper]
+fs_raw_hz          = 500000   # [EXPLICIT] E-02  native sampling rate
+n_channels_raw     = 6        # [EXPLICIT] E-02  hydrophones per file
+fs_target_hz       = 192000   # [EXPLICIT] E-03  resample target
+hpf_cutoff_hz      = 2000     # [EXPLICIT] E-04  high-pass passband above 2 kHz
+window             = "hamming"  # [EXPLICIT] E-03
+win_len            = 2048     # [EXPLICIT] E-03  samples at 192 kHz
+overlap_percent    = 50       # [EXPLICIT] E-03
+hop                = 1024     # [IMPLIED]  50 % of 2048
+nfft               = 2048     # [IMPLIED]  192000/2048 = 93.75 Hz bin spacing, no zero padding
+freq_resolution_hz = 93.75    # [EXPLICIT] E-03
+image_height       = 128      # [EXPLICIT] E-06
+image_width        = 128      # [EXPLICIT] E-06
+image_channels     = 1        # [EXPLICIT] E-06
+image_min          = 0.0      # [EXPLICIT] E-07
+image_max          = 1.0      # [EXPLICIT] E-07
+
+# ------------------------------------------------- IMPLEMENTATION DECISIONS (UNSPECIFIED by paper)
+[paths]
+raw_dir      = "encounter_191_audio"   # IMMUTABLE source. Never written to (storage.py enforces).
+manifest_csv = "metadata/manifest_363.csv"   # used read-only to verify raw-file SHA-256
+runs_dir     = "runs"
+models_dir   = "models"
+data_dir     = "data"
+
+[decisions.s1]   # spec A-01, A-02
+channel_policy   = "single"    # [DECISION] one channel per file; other policies not implemented
+channel_index    = 0           # [DECISION] ARBITRARY default (first hydrophone). Paper gives no basis. 0-based.
+int16_full_scale = 32768.0     # [DECISION] int16 counts -> float in [-1, 1)
+
+[decisions.s2]   # spec A-02
+method      = "resample_poly"  # [DECISION] polyphase FIR (scipy), rate ratio 48/125 derived from the paper rates
+kaiser_beta = 5.0              # [DECISION] scipy default Kaiser window design
+
+[decisions.s3]   # spec A-03, A-04
+filter    = "butterworth"      # [DECISION]
+order     = 4                  # [DECISION] per pass; zero-phase => squared magnitude (-6 dB at cutoff)
+zero_phase = true              # [DECISION] sosfiltfilt: no group delay, contour timing preserved
+applied_after = "s2"           # [DECISION] applied at 192 kHz, before the STFT (order is UNSPECIFIED in the paper)
+
+[decisions.s4]   # spec A-05
+window_periodic = true         # [DECISION] periodic Hamming (spectral-analysis convention)
+output          = "log_magnitude_db"  # [DECISION] 20*log10(|STFT| + eps); level relative to full scale, uncalibrated
+eps             = 1.0e-12      # [DECISION]
+padding         = "none"       # [DECISION] frames start at sample 0; n_frames = (N - win_len)//hop + 1
+
+# --------------------------------------------------------------- S5 DETECTOR INTERFACE
+[decisions.s5]   # [REPLACEMENT] replacement for the paper's unavailable reference [31]
+checkpoint        = "models/detector/ridgenet-v1/checkpoint.pt"
+band_lo_hz        = 2000.0     # [DECISION] spec A-06 lower edge (= high-pass edge, EXPLICIT E-04)
+band_hi_hz        = 24000.0    # [DECISION] spec A-06 upper edge UNSPECIFIED; 24 kHz chosen to cover Fig. 3's display range (not a paper limit)
+device            = "auto"     # "auto" | "cpu" | "cuda". Results must be logically identical.
+tile_frames       = 2048       # [REPLACEMENT] time tiling for inference
+halo_frames       = 32         # [REPLACEMENT] must be >= receptive-field radius (checked)
+# Input conditioning is INTERNAL to S5 (the S4 output itself is untouched). Spec FR-02 requires it to be recorded.
+[decisions.s5.conditioning]
+noise_floor      = "local_median"  # [REPLACEMENT] per-bin median over a sliding time span
+block_frames     = 64              # [REPLACEMENT] block median length (~0.34 s)
+median_blocks    = 7               # [REPLACEMENT] median across blocks (~2.4 s)
+clip_lo_db       = -10.0           # [REPLACEMENT] dB relative to local floor
+clip_hi_db       = 40.0            # [REPLACEMENT]
+scale_db         = 20.0            # [REPLACEMENT] x = clip(dB - floor) / scale
+
+# --------------------------------------------------------------- S6 TRACKING (replacement)
+[decisions.s6]   # [REPLACEMENT] spec A-07/A-08/A-09: the paper's [32]/[33] are unavailable
+peak_threshold            = 0.5    # [REPLACEMENT] calibration rule applied on SYNTHETIC validation only -> 0.5 (models/detector/ridgenet-v1/calibration.json); frozen
+min_peak_separation_bins  = 2
+broadband_frame_fraction  = 0.30   # frames with this fraction of band nodes above threshold are treated as clicks/broadband and skipped
+max_gap_frames            = 12     # gap bridging (~64 ms). [REPLACEMENT] 8 -> 12 chosen on SYNTHETIC validation (grid, recall +~3 pts, no false-alarm cost); frozen
+gate_base_bins            = 3.0    # association gate around the linear prediction. [REPLACEMENT] 2 -> 3 chosen on SYNTHETIC validation (same grid); frozen
+gate_growth_per_miss      = 0.5
+gate_max_bins             = 8.0
+predict_points            = 5      # observed points used for the linear trajectory prediction (3 scored +0.012 on synthetic val = within noise; 5 kept for jitter robustness)
+min_track_frames          = 12     # (~64 ms) shortest accepted track span
+min_observed_fraction     = 0.5
+min_mean_conf             = 0.55
+max_mean_slope_bins_per_frame = 3.0
+suppress_duplicates       = true
+duplicate_tol_bins        = 1.5
+duplicate_min_overlap     = 0.8
+suppress_harmonics        = true
+suppress_synchronous_combs = true  # [REPLACEMENT] added after Phase 3 inspection (revision r2): pulse-train lattices of near-identical short tracks
+comb_min_tracks           = 6
+comb_start_tol_frames     = 3      # all 17 tracks of the observed lattice started within +/-1 frame and had spans 12-16
+comb_span_tol_frames      = 3
+harmonic_orders           = [2, 3, 4]
+harmonic_rel_tol          = 0.03
+harmonic_min_overlap      = 0.7
+
+# ------------------------------------------------------------- S7/S8/S9 construction
+[decisions.s7]
+gap_fill          = "linear"      # [DECISION] interpolate frequency over coasted frames; one value per STFT frame
+
+[decisions.s8]   # spec A-10..A-13
+center_freq_definition = "midrange"  # [DECISION] f_c = (f_min + f_max) / 2 over the track (paper: UNSPECIFIED)
+time_centering         = "center"    # [DECISION] start column = (128 - L) // 2 (paper figures: IMPLIED centred)
+long_track_policy      = "reject"    # [DECISION] tracks longer than image_width frames are rejected, not cropped; counted
+signal                 = "complex_baseband"  # [DECISION] two-sided +/-6 kHz axis as in Fig. 2
+edge_ramp_samples      = 32          # [DECISION] raised-cosine on/off ramp (2.7 ms) to avoid spectral splatter
+
+[decisions.s9]   # spec A-14..A-16
+quantity        = "linear_magnitude"      # [DECISION] |STFT| of the baseband signal
+normalisation   = "per_image_max"         # [DECISION] divide by image maximum -> whistle ~1, background ~0
+orientation     = "row0_highest_frequency"  # [DECISION] image displays upright; 0 Hz at row 63
+dtype           = "float32"
+
+# ------------------------------------------------------------------- STORAGE POLICY
+[storage]
+mode = "debug"          # debug | normal | minimal  (overridable per run)
+plots = true            # diagnostic figures (debug mode only)
+store_on_failure = true # failed files always keep every intermediate that existed
+
+[storage.debug]     # which intermediates to keep
+s1 = true
+s2 = true
+s3 = true
+s4 = true
+s5 = true
+s6 = true
+s8 = true
+[storage.normal]
+s1 = false
+s2 = false
+s3 = false
+s4 = false
+s5 = true
+s6 = true
+s8 = false
+[storage.minimal]
+s1 = false
+s2 = false
+s3 = false
+s4 = false
+s5 = false
+s6 = false
+s8 = false
+# S7 vectors and S9 images + lineage metadata are ALWAYS kept in every mode.
+
+# --------------------------------------------------------------- VALIDATION FILE SETS
+[validation]
+rule   = "evenly_spaced_midpoints"   # file index i of k: floor((i + 0.5) * N / k) over the sorted raw file list
+phase1 = 1
+phase2 = 5
+phase3 = 10
