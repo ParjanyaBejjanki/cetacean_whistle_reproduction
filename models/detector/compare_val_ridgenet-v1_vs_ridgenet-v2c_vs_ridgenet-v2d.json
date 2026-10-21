@@ -1,0 +1,81 @@
+{
+ "split": "val",
+ "category": "A: SYNTHETIC (paired, same samples, same frozen S6)",
+ "baseline": "ridgenet-v1",
+ "results": {
+  "ridgenet-v1": {
+   "n_params": 14209,
+   "macs_per_node": 13984,
+   "receptive_radius_tf": [
+    19,
+    9
+   ],
+   "halo_frames": 32,
+   "node_ap": 0.6505566836401087,
+   "track_recall": 0.7374392220421394,
+   "recall_by_snr_db": {
+    "[-5,5)": 0.014,
+    "[5,10)": 0.554,
+    "[10,15)": 0.938,
+    "[15,40)": 0.968
+   },
+   "false_tracks_per_min_surrogate_negative": 0.0,
+   "s5_seconds_per_60s_file_gpu": 0.18134700000518933,
+   "s5_seconds_per_60s_file_cpu": 0.730781999998726
+  },
+  "ridgenet-v2c": {
+   "n_params": 14209,
+   "macs_per_node": 13984,
+   "receptive_radius_tf": [
+    19,
+    9
+   ],
+   "halo_frames": 32,
+   "node_ap": 0.6009003194594298,
+   "track_recall": 0.7601296596434359,
+   "recall_by_snr_db": {
+    "[-5,5)": 0.127,
+    "[5,10)": 0.631,
+    "[10,15)": 0.913,
+    "[15,40)": 0.954
+   },
+   "false_tracks_per_min_surrogate_negative": 0.0,
+   "s5_seconds_per_60s_file_gpu": 0.158541900003911,
+   "s5_seconds_per_60s_file_cpu": 0.7320413999987068,
+   "paired_vs_ridgenet-v1": {
+    "recovered_only_by_new": 30,
+    "recovered_only_by_base": 16,
+    "mcnemar_exact_p": 0.054076031858869555
+   },
+   "s5_time_change_per_60s_file_gpu_pct": -12.6,
+   "s5_time_change_per_60s_file_cpu_pct": 0.2
+  },
+  "ridgenet-v2d": {
+   "n_params": 16545,
+   "macs_per_node": 16288,
+   "receptive_radius_tf": [
+    35,
+    23
+   ],
+   "halo_frames": 48,
+   "node_ap": 0.5989477713933351,
+   "track_recall": 0.7585089141004863,
+   "recall_by_snr_db": {
+    "[-5,5)": 0.07,
+    "[5,10)": 0.619,
+    "[10,15)": 0.925,
+    "[15,40)": 0.968
+   },
+   "false_tracks_per_min_surrogate_negative": 0.0,
+   "s5_seconds_per_60s_file_gpu": 0.2173253999935696,
+   "s5_seconds_per_60s_file_cpu": 1.169009899997036,
+   "paired_vs_ridgenet-v1": {
+    "recovered_only_by_new": 23,
+    "recovered_only_by_base": 10,
+    "mcnemar_exact_p": 0.03508203336969018
+   },
+   "s5_time_change_per_60s_file_gpu_pct": 19.8,
+   "s5_time_change_per_60s_file_cpu_pct": 60.0
+  }
+ }
+}

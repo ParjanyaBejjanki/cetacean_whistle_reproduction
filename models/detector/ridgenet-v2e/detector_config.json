@@ -1,0 +1,193 @@
+{
+  "schema_version": 1,
+  "model": {
+    "name": "ridgenet",
+    "version": "ridgenet-v1",
+    "block_type": "dense",
+    "channels": 16,
+    "dilations": [
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        4,
+        2
+      ],
+      [
+        8,
+        2
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        2,
+        1
+      ]
+    ]
+  },
+  "synth": {
+    "seed": 20261008,
+    "window_s": 3.0,
+    "crop_frames": 256,
+    "backgrounds": {
+      "n_files": {
+        "train": 24,
+        "val": 16,
+        "test": 16
+      },
+      "windows_per_file": {
+        "train": 20,
+        "val": 12,
+        "test": 12
+      },
+      "candidates_per_file": 60,
+      "screen_db": 8.0,
+      "screen_persist": 9,
+      "screen_fraction": 0.7,
+      "screen_guard_bins": [
+        3,
+        5
+      ],
+      "screen_max_score": 0.02,
+      "p_time_reverse": 0.5
+    },
+    "whistles": {
+      "p_n_whistles": [
+        0.1,
+        0.25,
+        0.25,
+        0.18,
+        0.12,
+        0.1
+      ],
+      "p_scenario": {
+        "random": 0.6,
+        "crossing": 0.2,
+        "parallel": 0.2
+      },
+      "duration_s": [
+        0.1,
+        1.0
+      ],
+      "f_range_hz": [
+        2300.0,
+        23700.0
+      ],
+      "slope_max_hz_per_s": 60000.0,
+      "n_knots": [
+        2,
+        6
+      ],
+      "p_ripple": 0.3,
+      "ripple_rate_hz": [
+        5.0,
+        20.0
+      ],
+      "ripple_depth_hz": [
+        30.0,
+        250.0
+      ],
+      "snr_db": [
+        -2.0,
+        24.0
+      ],
+      "p_harmonic2": 0.6,
+      "p_harmonic3": 0.3,
+      "harmonic_rel_db": [
+        -15.0,
+        -3.0
+      ],
+      "parallel_offset_bins": [
+        2.0,
+        4.0
+      ]
+    },
+    "clicks": {
+      "p_click_train": 0.6,
+      "n_trains": [
+        1,
+        3
+      ],
+      "n_clicks": [
+        3,
+        25
+      ],
+      "ici_ms": [
+        10.0,
+        80.0
+      ],
+      "center_khz": [
+        8.0,
+        70.0
+      ],
+      "decay_ms": [
+        0.05,
+        0.3
+      ],
+      "level_db": [
+        10.0,
+        35.0
+      ],
+      "p_sweep_train": 0.2
+    },
+    "labels": {
+      "sigma_bins": 0.8,
+      "snr_pos_db": 3.0,
+      "ignore_radius_bins": 2,
+      "min_envelope": 0.05,
+      "ignore_background_ridges": true,
+      "bg_ridge_db": 4.0,
+      "bg_ridge_dilate": [
+        1,
+        3
+      ],
+      "bg_ridge_len": 25,
+      "bg_ridge_slopes": [
+        -1.0,
+        -0.8333,
+        -0.6667,
+        -0.5,
+        -0.3333,
+        -0.1667,
+        0.0,
+        0.1667,
+        0.3333,
+        0.5,
+        0.6667,
+        0.8333,
+        1.0
+      ]
+    }
+  },
+  "train": {
+    "steps": 6000,
+    "batch_size": 16,
+    "lr": 0.003,
+    "weight_decay": 0.0001,
+    "pos_weight": 6.0,
+    "dice_weight": 1.0,
+    "num_workers": 6,
+    "val_every": 500,
+    "val_samples": 600,
+    "test_samples": 600,
+    "device": "auto"
+  },
+  "_meta": {
+    "config_path": "D:\\ALL\\cetacean_whistle_reproduction\\configs\\detector.toml",
+    "file_sha256": "f1fc102cbaa8e07abee64faab68ec27449ae1d6c11c60ada3eb5b8bfe6ac8c71",
+    "overrides": [
+      "synth.labels.ignore_background_ridges=true",
+      "synth.whistles.p_scenario={ random = 0.6, crossing = 0.2, parallel = 0.2 }",
+      "synth.backgrounds.p_time_reverse=0.5",
+      "train.num_workers=6"
+    ],
+    "effective_hash": "3481a6b1c01d1d0f1370f4510bf7db7892a88854708800efc6190ad80ee4205a"
+  }
+}

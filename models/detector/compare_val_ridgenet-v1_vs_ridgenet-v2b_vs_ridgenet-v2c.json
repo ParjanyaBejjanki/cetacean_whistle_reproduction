@@ -1,0 +1,81 @@
+{
+ "split": "val",
+ "category": "A: SYNTHETIC (paired, same samples, same frozen S6)",
+ "baseline": "ridgenet-v1",
+ "results": {
+  "ridgenet-v1": {
+   "n_params": 14209,
+   "macs_per_node": 13984,
+   "receptive_radius_tf": [
+    19,
+    9
+   ],
+   "halo_frames": 32,
+   "node_ap": 0.6505566836401087,
+   "track_recall": 0.7374392220421394,
+   "recall_by_snr_db": {
+    "[-5,5)": 0.014,
+    "[5,10)": 0.554,
+    "[10,15)": 0.938,
+    "[15,40)": 0.968
+   },
+   "false_tracks_per_min_surrogate_negative": 0.0,
+   "s5_seconds_per_60s_file_gpu": 0.18671330000506714,
+   "s5_seconds_per_60s_file_cpu": 0.9951676999917254
+  },
+  "ridgenet-v2b": {
+   "n_params": 14209,
+   "macs_per_node": 13984,
+   "receptive_radius_tf": [
+    19,
+    9
+   ],
+   "halo_frames": 32,
+   "node_ap": 0.6574649517734312,
+   "track_recall": 0.7390599675850892,
+   "recall_by_snr_db": {
+    "[-5,5)": 0.056,
+    "[5,10)": 0.571,
+    "[10,15)": 0.919,
+    "[15,40)": 0.959
+   },
+   "false_tracks_per_min_surrogate_negative": 0.0,
+   "s5_seconds_per_60s_file_gpu": 0.1661067999957595,
+   "s5_seconds_per_60s_file_cpu": 0.9305504999938421,
+   "paired_vs_ridgenet-v1": {
+    "recovered_only_by_new": 14,
+    "recovered_only_by_base": 13,
+    "mcnemar_exact_p": 1.0
+   },
+   "s5_time_change_per_60s_file_gpu_pct": -11.0,
+   "s5_time_change_per_60s_file_cpu_pct": -6.5
+  },
+  "ridgenet-v2c": {
+   "n_params": 14209,
+   "macs_per_node": 13984,
+   "receptive_radius_tf": [
+    19,
+    9
+   ],
+   "halo_frames": 32,
+   "node_ap": 0.6009003194594298,
+   "track_recall": 0.7601296596434359,
+   "recall_by_snr_db": {
+    "[-5,5)": 0.127,
+    "[5,10)": 0.631,
+    "[10,15)": 0.913,
+    "[15,40)": 0.954
+   },
+   "false_tracks_per_min_surrogate_negative": 0.0,
+   "s5_seconds_per_60s_file_gpu": 0.15713079999841284,
+   "s5_seconds_per_60s_file_cpu": 0.6614097999990918,
+   "paired_vs_ridgenet-v1": {
+    "recovered_only_by_new": 30,
+    "recovered_only_by_base": 16,
+    "mcnemar_exact_p": 0.054076031858869555
+   },
+   "s5_time_change_per_60s_file_gpu_pct": -15.8,
+   "s5_time_change_per_60s_file_cpu_pct": -33.5
+  }
+ }
+}

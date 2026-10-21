@@ -1,0 +1,60 @@
+RidgeNet[dense]: 14209 parameters, 13984 MACs/node, receptive radius (t,f) = (19, 9), device=cuda
+{"step": 100, "loss": 1.6554092168807983, "bce": 0.6580800414085388, "dice": 0.9973291754722595, "lr": 0.0003135532623851087, "elapsed_s": 57.8}
+{"step": 200, "loss": 1.1602754592895508, "bce": 0.16552472114562988, "dice": 0.9947506785392761, "lr": 0.0008421812920683266, "elapsed_s": 100.0}
+{"step": 300, "loss": 1.0387357473373413, "bce": 0.09120570868253708, "dice": 0.9475300908088684, "lr": 0.0015637762005310427, "elapsed_s": 139.5}
+{"step": 400, "loss": 0.7732987999916077, "bce": 0.03560219705104828, "dice": 0.7376965880393982, "lr": 0.002284355975754587, "elapsed_s": 178.6}
+{"step": 500, "loss": 0.5291458964347839, "bce": 0.059379156678915024, "dice": 0.4697667360305786, "lr": 0.002810211497873341, "elapsed_s": 219.4}
+VAL {"val_loss": 0.50762806336085, "node_precision": 0.7865193398927586, "node_recall": 0.5882473183172076, "node_f1": 0.6730857047390989}
+{"step": 600, "loss": 0.48294442892074585, "bce": 0.03143967688083649, "dice": 0.45150476694107056, "lr": 0.002999999746153173, "elapsed_s": 260.8}
+{"step": 700, "loss": 0.41738221049308777, "bce": 0.031378477811813354, "dice": 0.3860037326812744, "lr": 0.0029974112534110454, "elapsed_s": 305.2}
+{"step": 800, "loss": 0.6502873301506042, "bce": 0.032073572278022766, "dice": 0.6182137727737427, "lr": 0.002989756015283832, "elapsed_s": 350.9}
+{"step": 900, "loss": 0.6882013082504272, "bce": 0.055425867438316345, "dice": 0.6327754259109497, "lr": 0.0029770599346741465, "elapsed_s": 393.5}
+{"step": 1000, "loss": 0.5455010533332825, "bce": 0.052362244576215744, "dice": 0.49313879013061523, "lr": 0.0029593659710999225, "elapsed_s": 436.3}
+VAL {"val_loss": 0.4674544628461202, "node_precision": 0.7714217840598646, "node_recall": 0.6321762999591177, "node_f1": 0.6948920416853909}
+{"step": 1100, "loss": 0.4928668439388275, "bce": 0.040891677141189575, "dice": 0.45197516679763794, "lr": 0.0029367339953330035, "elapsed_s": 483.0}
+Traceback (most recent call last):
+  File "D:\ALL\cetacean_whistle_reproduction\whistle.py", line 10, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "D:\ALL\cetacean_whistle_reproduction\src\whistlepipe\cli.py", line 168, in main
+    return args.fn(args)
+           ^^^^^^^^^^^^^
+  File "D:\ALL\cetacean_whistle_reproduction\src\whistlepipe\cli.py", line 91, in cmd_train
+    train_detector(cfg, dcfg, version=args.version)
+  File "D:\ALL\cetacean_whistle_reproduction\src\whistlepipe\train.py", line 78, in train_detector
+    for step, (x, y, w) in enumerate(loader, 1):
+  File "C:\Users\welcome\AppData\Local\Programs\Python\Python311\Lib\site-packages\torch\utils\data\dataloader.py", line 725, in __next__
+    data = self._next_data()
+           ^^^^^^^^^^^^^^^^^
+  File "C:\Users\welcome\AppData\Local\Programs\Python\Python311\Lib\site-packages\torch\utils\data\dataloader.py", line 1501, in _next_data
+    return self._process_data(data, worker_id)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\welcome\AppData\Local\Programs\Python\Python311\Lib\site-packages\torch\utils\data\dataloader.py", line 1569, in _process_data
+    data.reraise()
+  File "C:\Users\welcome\AppData\Local\Programs\Python\Python311\Lib\site-packages\torch\_utils.py", line 802, in reraise
+    raise RuntimeError(msg) from None
+RuntimeError: Caught MemoryError in DataLoader worker process 7.
+Original Traceback (most recent call last):
+  File "C:\Users\welcome\AppData\Local\Programs\Python\Python311\Lib\site-packages\torch\utils\data\_utils\worker.py", line 375, in _worker_loop
+    data = fetcher.fetch(index)  # type: ignore[possibly-undefined]
+           ^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\welcome\AppData\Local\Programs\Python\Python311\Lib\site-packages\torch\utils\data\_utils\fetch.py", line 54, in fetch
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\welcome\AppData\Local\Programs\Python\Python311\Lib\site-packages\torch\utils\data\_utils\fetch.py", line 54, in <listcomp>
+    data = [self.dataset[idx] for idx in possibly_batched_index]
+            ~~~~~~~~~~~~^^^^^
+  File "D:\ALL\cetacean_whistle_reproduction\src\whistlepipe\synth\dataset.py", line 41, in __getitem__
+    s = self._sampler.sample(i)
+        ^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ALL\cetacean_whistle_reproduction\src\whistlepipe\synth\whistles.py", line 246, in sample
+    def sample(self, index: int, epoch: int = 0, surrogate: bool = False, no_whistles: bool = False) -> dict:
+                 ^^^^^^^^^^^^^^^^
+  File "D:\ALL\cetacean_whistle_reproduction\src\whistlepipe\synth\whistles.py", line 40, in _stft_db
+    return dsp.stft_db(x, self.win, self.hop, self.nfft)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\ALL\cetacean_whistle_reproduction\src\whistlepipe\dsp.py", line 104, in stft_db
+    mag = np.abs(np.fft.rfft(fr, n=nfft, axis=1))
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+numpy._core._exceptions._ArrayMemoryError: Unable to allocate 4.39 MiB for an array with shape (561, 1025) and data type float64
+

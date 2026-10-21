@@ -1,0 +1,54 @@
+{
+ "split": "val",
+ "category": "A: SYNTHETIC (paired, same samples, same frozen S6)",
+ "baseline": "ridgenet-v1",
+ "results": {
+  "ridgenet-v1": {
+   "n_params": 14209,
+   "macs_per_node": 13984,
+   "receptive_radius_tf": [
+    19,
+    9
+   ],
+   "halo_frames": 32,
+   "node_ap": 0.6505566836401087,
+   "track_recall": 0.7374392220421394,
+   "recall_by_snr_db": {
+    "[-5,5)": 0.014,
+    "[5,10)": 0.554,
+    "[10,15)": 0.938,
+    "[15,40)": 0.968
+   },
+   "false_tracks_per_min_surrogate_negative": 0.0,
+   "s5_seconds_per_60s_file_gpu": 0.25015400000847876,
+   "s5_seconds_per_60s_file_cpu": 1.6957392000040272
+  },
+  "ridgenet-v2a": {
+   "n_params": 16545,
+   "macs_per_node": 16288,
+   "receptive_radius_tf": [
+    35,
+    23
+   ],
+   "halo_frames": 48,
+   "node_ap": 0.6825606560494193,
+   "track_recall": 0.7098865478119936,
+   "recall_by_snr_db": {
+    "[-5,5)": 0.0,
+    "[5,10)": 0.482,
+    "[10,15)": 0.925,
+    "[15,40)": 0.959
+   },
+   "false_tracks_per_min_surrogate_negative": 0.2197265625,
+   "s5_seconds_per_60s_file_gpu": 0.2142057000019122,
+   "s5_seconds_per_60s_file_cpu": 1.0569303999945987,
+   "paired_vs_ridgenet-v1": {
+    "recovered_only_by_new": 15,
+    "recovered_only_by_base": 32,
+    "mcnemar_exact_p": 0.018623836615006432
+   },
+   "s5_time_change_per_60s_file_gpu_pct": -14.4,
+   "s5_time_change_per_60s_file_cpu_pct": -37.7
+  }
+ }
+}

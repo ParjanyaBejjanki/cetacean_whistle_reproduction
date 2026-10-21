@@ -15,7 +15,12 @@ SPLIT_ID = {"train": 0, "val": 1, "test": 2}
 
 
 def make_sampler(cfg: Cfg, dcfg: Cfg, split: str) -> SynthSampler:
-    return SynthSampler(cfg, dcfg, load_bank(cfg, split)["windows"], SPLIT_ID[split])
+    masks = None
+    if split == "train" and dcfg["synth"]["labels"].get("ignore_background_ridges", False):
+        from .backgrounds import load_ridge_masks
+
+        masks = load_ridge_masks(cfg, dcfg, split)
+    return SynthSampler(cfg, dcfg, load_bank(cfg, split)["windows"], SPLIT_ID[split], masks)
 
 
 def crop_start(seed: int, split: str, index: int, T: int, crop: int) -> int:

@@ -99,3 +99,42 @@ def test_ridge_screen_flags_persistent_narrowband_but_not_clicks():
     assert backgrounds.ridge_score(tonal, *args) > 0.2
     assert backgrounds.ridge_score(clicks, *args) < 0.01
     assert backgrounds.ridge_score(base, *args) < 0.01
+
+
+def _cfg_with(det_cfg, **synth_updates):
+    import copy
+
+    from whistlepipe.config import Cfg
+
+    d = Cfg(copy.deepcopy(dict(det_cfg)))
+    for path, val in synth_updates.items():
+        sec, key = path.split("__")
+        d["synth"][sec][key] = val
+    return d
+
+
+def test_snr_mix_option_respects_intervals(base_cfg, det_cfg):
+    rng = np.random.default_rng(0)
+    windows = (0.003 * rng.standard_normal((2, int(3.0 * 192000)))).astype(np.float16)
+    s = SynthSampler(base_cfg, _cfg_with(det_cfg, whistles__snr_mix=[[1.0, 4.0, 6.0]]), windows, split_id=0)
+    snrs = [x for i in range(40) for x in s.sample(i)["meta"]["snr_db"]]
+    assert snrs and all(4.0 <= v <= 6.0 for v in snrs)
+
+
+def test_time_reverse_applies_to_training_split_only(base_cfg, det_cfg):
+    rng = np.random.default_rng(0)
+    windows = (0.003 * rng.standard_normal((2, int(3.0 * 192000)))).astype(np.float16)
+    on = _cfg_with(det_cfg, backgrounds__p_time_reverse=1.0)
+    off = _cfg_with(det_cfg, backgrounds__p_time_reverse=0.0)
+    assert not np.array_equal(SynthSampler(base_cfg, on, windows, 0).sample(3)["x"], SynthSampler(base_cfg, off, windows, 0).sample(3)["x"])
+    assert np.array_equal(SynthSampler(base_cfg, on, windows, 1).sample(3)["x"], SynthSampler(base_cfg, off, windows, 1).sample(3)["x"])   # val untouched
+
+
+def test_defaults_add_no_random_draws(base_cfg, det_cfg):
+    """With the new options absent the generator must reproduce the ridgenet-v1 stream exactly."""
+    rng = np.random.default_rng(0)
+    windows = (0.003 * rng.standard_normal((2, int(3.0 * 192000)))).astype(np.float16)
+    plain = _cfg_with(det_cfg)
+    plain["synth"]["backgrounds"].pop("p_time_reverse", None); plain["synth"]["whistles"].pop("snr_mix", None)
+    zero = _cfg_with(det_cfg, backgrounds__p_time_reverse=0.0)
+    assert np.array_equal(SynthSampler(base_cfg, plain, windows, 0).sample(7)["x"], SynthSampler(base_cfg, zero, windows, 0).sample(7)["x"])

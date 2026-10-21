@@ -215,7 +215,7 @@ def _process_file(cfg: Cfg, store: RunStore, opts: RunOptions, path: Path, detec
     if detector is not None and i0 <= STAGE_ORDER.index("s5") <= i1:
         det_info = {"name": detector.name, "version": detector.version, **detector.meta}
     meta = {
-        "stem": stem, "status": "OK", "run_id": store.run_id, "storage_mode": store.mode,
+        "stem": stem, "encounter_id": audio.encounter_of(path), "status": "OK", "run_id": store.run_id, "storage_mode": store.mode,
         "raw": raw, "pipeline_config_effective_hash": cfg["_meta"]["effective_hash"],
         "stages_run": STAGE_ORDER[i0:i1 + 1], "resumed_from_run": str(opts.from_run) if opts.from_run else None,
         "stage_diagnostics": ctx.diag, "timings_s": ctx.timings, "total_time_s": round(sum(ctx.timings.values()), 3),
@@ -225,8 +225,17 @@ def _process_file(cfg: Cfg, store: RunStore, opts: RunOptions, path: Path, detec
 
 
 # ----------------------------------------------------------------------------- run
-def run_pipeline(cfg: Cfg, opts: RunOptions, project_root: Path = PROJECT_ROOT, det_cfg: Cfg | None = None) -> dict:
-    store = RunStore(cfg, opts.run_id, opts.storage_mode)
+def run_pipeline(cfg: Cfg, opts: RunOptions, project_root: Path = PROJECT_ROOT, det_cfg: Cfg | None = None,
+                 runs_dir: Path | None = None, progress=None) -> dict:
+    """Run ``opts.files`` into ``<runs_dir>/<run_id>/`` (default runs_dir: [paths].runs_dir).
+    ``progress``: optional callable receiving the same progress lines as logs/run.log (e.g. print)."""
+    store = RunStore(cfg, opts.run_id, opts.storage_mode, runs_dir=runs_dir)
+
+    def say(msg: str) -> None:
+        store.log(msg)
+        if progress:
+            progress(msg)
+
     i0, i1 = STAGE_ORDER.index(opts.first), STAGE_ORDER.index(opts.last)
     if i0 > i1:
         raise ValueError("first stage after last stage")
@@ -248,7 +257,7 @@ def run_pipeline(cfg: Cfg, opts: RunOptions, project_root: Path = PROJECT_ROOT, 
         "detector_config_hash": det_cfg["_meta"]["effective_hash"] if det_cfg else None,
         "seed_note": "inference is deterministic; random seeds are used only by synthetic-data generation/training (see models/detector/*/)",
     })
-    store.log(f"run {opts.run_id}: {len(opts.files)} files, stages {opts.first}..{opts.last}, storage={store.mode}")
+    say(f"run {opts.run_id}: {len(opts.files)} files, stages {opts.first}..{opts.last}, storage={store.mode}")
 
     summary = {"run_id": opts.run_id, "n_files": len(opts.files), "ok": 0, "failed": 0, "failed_files": [],
                "n_tracks": 0, "n_vectors": 0, "n_images": 0, "track_rejections": {}, "s8_rejections": {},
@@ -281,24 +290,24 @@ def run_pipeline(cfg: Cfg, opts: RunOptions, project_root: Path = PROJECT_ROOT, 
 
                 plot_overview(store.sub("diagnostics") / f"{stem}_overview.png", ctx.outputs["s4"], ctx.outputs["s5"],
                               ctx.outputs["s6"], cfg, title=stem)
-            store.log(f"[{i}/{len(opts.files)}] OK  {stem}  {meta['total_time_s']:.1f}s  tracks={d.get('s6', {}).get('n_tracks')} images={d.get('s9', {}).get('n_images')}")
+            say(f"[{i}/{len(opts.files)}] OK  {stem}  {meta['total_time_s']:.1f}s  tracks={d.get('s6', {}).get('n_tracks')} images={d.get('s9', {}).get('n_images')}")
         except Exception as e:   # noqa: BLE001  (file-level isolation; the failure is fully recorded)
             tb = traceback.format_exc()
             summary["failed"] += 1
             summary["failed_files"].append({"stem": stem, "error": repr(e)})
             # on failure keep every intermediate that existed (regardless of the storage policy)
             store.write_failure(stem, getattr(e, "ctx_outputs", {}),
-                                {"stem": stem, "run_id": store.run_id, "error": repr(e),
+                                {"stem": stem, "encounter_id": audio.encounter_of(path), "run_id": store.run_id, "error": repr(e),
                                  "stage_diagnostics": getattr(e, "ctx_diag", {}),
                                  "config_hash": cfg["_meta"]["effective_hash"]}, tb)
             store.append_stats({"stem": stem, "status": "FAILED", "error": repr(e)})
-            store.log(f"[{i}/{len(opts.files)}] FAILED {stem}: {e!r}")
+            say(f"[{i}/{len(opts.files)}] FAILED {stem}: {e!r}")
             if opts.fail_fast:
                 raise
     summary["wall_time_s"] = round(time.perf_counter() - t_run, 2)
     p = store.consolidate_images_index(all_rows)
     summary["images_index"] = str(p.relative_to(store.dir)) if p else None
     store.write_json(store.dir / "summary.json", summary)
-    store.log(f"done: ok={summary['ok']} failed={summary['failed']} images={summary['n_images']} wall={summary['wall_time_s']}s")
+    say(f"done: ok={summary['ok']} failed={summary['failed']} images={summary['n_images']} wall={summary['wall_time_s']}s")
     return summary
 

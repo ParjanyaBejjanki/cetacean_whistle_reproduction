@@ -7,7 +7,8 @@ unlabeled, i.e. treated as negatives). This is recorded as a known limitation an
 measurements.
 
 Backgrounds are drawn only from raw files that belong to NO validation set (val1/val5/val10), and train/val/test
-use disjoint files.
+use disjoint files. The file list is [paths].synth_raw_dir (encounter 191), pinned so that adding encounters to the
+pipeline does not change which files the existing banks/checkpoints were built from.
 """
 from __future__ import annotations
 
@@ -29,7 +30,7 @@ def bank_dir(cfg: Cfg) -> Path:
 
 
 def reserved_validation_files(cfg: Cfg) -> set[str]:
-    files = audio.list_raw_files(project_path(cfg, "raw_dir"))
+    files = audio.list_raw_files(project_path(cfg, "synth_raw_dir"))
     out: set[str] = set()
     for k in (cfg["validation"]["phase1"], cfg["validation"]["phase2"], cfg["validation"]["phase3"]):
         out |= {p.name for p in audio.select_validation_files(files, k)}
@@ -37,7 +38,7 @@ def reserved_validation_files(cfg: Cfg) -> set[str]:
 
 
 def pick_background_files(cfg: Cfg, dcfg: Cfg) -> dict[str, list[Path]]:
-    files = [p for p in audio.list_raw_files(project_path(cfg, "raw_dir")) if p.name not in reserved_validation_files(cfg)]
+    files = [p for p in audio.list_raw_files(project_path(cfg, "synth_raw_dir")) if p.name not in reserved_validation_files(cfg)]
     rng = np.random.default_rng([int(dcfg["synth"]["seed"]), 1])
     order = rng.permutation(len(files))
     n = dcfg["synth"]["backgrounds"]["n_files"]
@@ -124,3 +125,54 @@ def load_bank(cfg: Cfg, split: str) -> dict:
     out = {k: z[k] for k in z.files}
     out["windows"] = np.load(d / f"{split}_windows.npy", mmap_mode="r")
     return out
+
+
+# ----------------------------------------------------------------------------- label-free masks of real tonal structure
+def ridge_line_statistic(band_db: np.ndarray, cond: dict, length: int, slopes) -> np.ndarray:
+    """For each node: median of the dB-above-local-floor values along a `length`-frame line through it, maximised over
+    `slopes` (bins/frame). Sustained narrow ridges keep it high; noise and clicks (few frames) do not."""
+    above = band_db - noise_floor_db(band_db, int(cond["block_frames"]), int(cond["median_blocks"]))
+    half = int(length) // 2
+    best = np.full(above.shape, -np.inf, np.float32)
+    for slope in slopes:
+        stack = np.stack([np.roll(np.roll(above, -j, axis=0), -int(round(slope * j)), axis=1) for j in range(-half, half + 1)])
+        best = np.maximum(best, np.median(stack, axis=0))
+    return best
+
+
+def ridge_mask_params(dcfg: Cfg) -> dict:
+    lc = dcfg["synth"]["labels"]
+    return {"bg_ridge_db": float(lc["bg_ridge_db"]), "bg_ridge_len": int(lc["bg_ridge_len"]),
+            "bg_ridge_slopes": [float(x) for x in lc["bg_ridge_slopes"]], "dilate_tf": [int(x) for x in lc["bg_ridge_dilate"]]}
+
+
+def build_ridge_masks(cfg: Cfg, dcfg: Cfg, split: str) -> dict:
+    """Computed once per background window (a deterministic function of the bank) and cached next to the bank."""
+    pr = ridge_mask_params(dcfg)
+    bank = load_bank(cfg, split)
+    k_lo, k_hi = band_bins(cfg)
+    cond = cfg["decisions"]["s5"]["conditioning"]
+    p = cfg["paper"]
+    masks = []
+    for w in bank["windows"]:
+        db = dsp.stft_db(np.asarray(w, np.float64), p["win_len"], p["hop"], p["nfft"])[:, k_lo:k_hi + 1]
+        m = ridge_line_statistic(db, cond, pr["bg_ridge_len"], pr["bg_ridge_slopes"]) > pr["bg_ridge_db"]
+        masks.append(ndimage.binary_dilation(m, structure=np.ones(tuple(pr["dilate_tf"]), bool)))
+    masks = np.stack(masks)
+    d = bank_dir(cfg)
+    np.save(d / f"{split}_ridgemask.npy", masks)
+    meta = {"split": split, "params": pr, "n_windows": int(len(masks)), "marked_fraction": float(masks.mean())}
+    (d / f"{split}_ridgemask.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+    print(f"  [{split}] ridge masks: {len(masks)} windows, {100 * masks.mean():.2f}% of nodes marked (after dilation)", flush=True)
+    return meta
+
+
+def load_ridge_masks(cfg: Cfg, dcfg: Cfg, split: str) -> np.ndarray:
+    d = bank_dir(cfg)
+    meta_p = d / f"{split}_ridgemask.json"
+    if not meta_p.exists():
+        raise FileNotFoundError(f"ridge masks for '{split}' missing: run `python whistle.py build-ridge-masks`")
+    meta = json.loads(meta_p.read_text(encoding="utf-8"))
+    if meta["params"] != ridge_mask_params(dcfg):
+        raise ValueError(f"cached ridge masks were built with {meta['params']} but the config asks for {ridge_mask_params(dcfg)}: rebuild them")
+    return np.load(d / f"{split}_ridgemask.npy", mmap_mode="r")

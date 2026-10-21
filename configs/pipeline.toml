@@ -34,11 +34,26 @@ image_max          = 1.0      # [EXPLICIT] E-07
 
 # ------------------------------------------------- IMPLEMENTATION DECISIONS (UNSPECIFIED by paper)
 [paths]
-raw_dir      = "encounter_191_audio"   # IMMUTABLE source. Never written to (storage.py enforces).
-manifest_csv = "metadata/manifest_363.csv"   # used read-only to verify raw-file SHA-256
-runs_dir     = "runs"
-models_dir   = "models"
-data_dir     = "data"
+# IMMUTABLE sources, one folder per encounter (folder name must be encounter_<id>_audio). Never written to (storage.py enforces).
+raw_dirs = [
+    "encounter_191_audio",
+    "encounter_214_audio",
+    "encounter_276_audio",
+    "encounter_279_audio",
+    "encounter_280_audio",
+    "encounter_308_audio",
+    "encounter_331_audio",
+    "encounter_416_audio",
+]
+# Source of the synthetic-training backgrounds and of the val1/val5/val10 sets. PINNED to encounter 191: the
+# background banks in data/synthetic/ (and therefore ridgenet-v1..v2e) were drawn from this file list.
+synth_raw_dir    = "encounter_191_audio"
+manifest_csv     = "metadata/manifest_all.csv"   # all raw files + SHA-256 (python whistle.py build-manifest); read-only afterwards
+manifest_363_csv = "metadata/manifest_363.csv"   # original manifest of encounter 191; build-manifest cross-checks against it
+dataset_dir      = "preprocessed"                # FINAL dataset, one folder per encounter (python whistle.py build-dataset)
+runs_dir         = "preprocessing_checks"        # small check runs with full debug detail (python whistle.py run)
+models_dir       = "models"
+data_dir         = "data"
 
 [decisions.s1]   # spec A-01, A-02
 channel_policy   = "single"    # [DECISION] one channel per file; other policies not implemented
@@ -63,7 +78,7 @@ padding         = "none"       # [DECISION] frames start at sample 0; n_frames =
 
 # --------------------------------------------------------------- S5 DETECTOR INTERFACE
 [decisions.s5]   # [REPLACEMENT] replacement for the paper's unavailable reference [31]
-checkpoint        = "models/detector/ridgenet-v1/checkpoint.pt"
+checkpoint        = "models/detector/ridgenet-v2c/checkpoint.pt"   # v2c adopted for the multi-encounter dataset (README "S5 detector experiments")
 band_lo_hz        = 2000.0     # [DECISION] spec A-06 lower edge (= high-pass edge, EXPLICIT E-04)
 band_hi_hz        = 24000.0    # [DECISION] spec A-06 upper edge UNSPECIFIED; 24 kHz chosen to cover Fig. 3's display range (not a paper limit)
 device            = "auto"     # "auto" | "cpu" | "cuda". Results must be logically identical.
@@ -80,7 +95,7 @@ scale_db         = 20.0            # [REPLACEMENT] x = clip(dB - floor) / scale
 
 # --------------------------------------------------------------- S6 TRACKING (replacement)
 [decisions.s6]   # [REPLACEMENT] spec A-07/A-08/A-09: the paper's [32]/[33] are unavailable
-peak_threshold            = 0.5    # [REPLACEMENT] calibration rule applied on SYNTHETIC validation only -> 0.5 (models/detector/ridgenet-v1/calibration.json); frozen
+peak_threshold            = 0.5    # [REPLACEMENT] calibration rule applied on SYNTHETIC validation only -> 0.5 (models/detector/ridgenet-v1/calibration.json); frozen. NOT recalibrated for v2c (v2c was compared at this threshold)
 min_peak_separation_bins  = 2
 broadband_frame_fraction  = 0.30   # frames with this fraction of band nodes above threshold are treated as clicks/broadband and skipped
 max_gap_frames            = 12     # gap bridging (~64 ms). [REPLACEMENT] 8 -> 12 chosen on SYNTHETIC validation (grid, recall +~3 pts, no false-alarm cost); frozen
@@ -153,9 +168,15 @@ s6 = false
 s8 = false
 # S7 vectors and S9 images + lineage metadata are ALWAYS kept in every mode.
 
+# --------------------------------------------------------------- FINAL DATASET (preprocessed/)
+[dataset]
+keep_detector_output     = true   # S5 confidence (float16) + S6 tracks per file in preprocessed/_details/detector_output/ (not needed for training)
+expected_file_duration_s = 60.0   # [DECISION] build-manifest marks shorter files SHORT (they are still processed)
+
 # --------------------------------------------------------------- VALIDATION FILE SETS
 [validation]
-rule   = "evenly_spaced_midpoints"   # file index i of k: floor((i + 0.5) * N / k) over the sorted raw file list
+rule   = "evenly_spaced_midpoints"   # file index i of k: floor((i + 0.5) * N / k) over the sorted synth_raw_dir file list (encounter 191)
+                                     # set "per_encounter": the midpoint file of every encounter (k = 1 per encounter)
 phase1 = 1
 phase2 = 5
 phase3 = 10

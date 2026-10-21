@@ -128,10 +128,37 @@ def load_detector_config(path: str | Path | None = None, overrides: list[str] | 
     return Cfg(raw)
 
 
+def processing_hash(cfg: Cfg) -> str:
+    """Hash of the settings that determine the processed data: [paper] + [decisions], without the S5 device
+    (results are device-independent, tested). Paths, raw-folder lists, storage and dataset options are excluded,
+    so adding an encounter folder or moving an output folder keeps an existing dataset compatible."""
+    dec = json.loads(json.dumps(cfg["decisions"]))
+    dec.get("s5", {}).pop("device", None)
+    return canonical_hash({"paper": cfg["paper"], "decisions": dec})
+
+
+def _resolve(p: str | Path) -> Path:
+    p = Path(p)
+    return p if p.is_absolute() else PROJECT_ROOT / p
+
+
 def project_path(cfg: Cfg, key: str) -> Path:
     """Resolve cfg.paths[key] relative to the project root."""
-    p = Path(cfg["paths"][key])
-    return p if p.is_absolute() else PROJECT_ROOT / p
+    return _resolve(cfg["paths"][key])
+
+
+def raw_dirs(cfg: Cfg) -> list[Path]:
+    """The raw-audio folders processed by the pipeline (one per encounter), in config order."""
+    return [_resolve(p) for p in cfg["paths"]["raw_dirs"]]
+
+
+def protected_raw_dirs(cfg: Cfg) -> list[Path]:
+    """Every immutable raw folder (pipeline folders + the synthetic-background source): never written to."""
+    out: list[Path] = []
+    for p in raw_dirs(cfg) + [project_path(cfg, "synth_raw_dir")]:
+        if p not in out:
+            out.append(p)
+    return out
 
 
 def band_bins(cfg: Cfg) -> tuple[int, int]:

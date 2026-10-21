@@ -12,7 +12,8 @@ import numpy as np
 import soundfile as sf
 from scipy import signal
 
-from .config import Cfg, project_path
+from . import audio
+from .config import Cfg
 from .storage import load_stage_array
 
 
@@ -22,7 +23,7 @@ def _welch_db(x, fs, nper=8192):
 
 
 def verify_s1_s4(cfg: Cfg, run_dir: Path, stem: str) -> dict:
-    raw = project_path(cfg, "raw_dir") / f"{stem}.flac"
+    raw = audio.find_raw_file(cfg, stem)
     p = cfg["paper"]
     ch = int(cfg["decisions"]["s1"]["channel_index"])
     R: dict = {"stem": stem, "checks": {}}
@@ -82,9 +83,9 @@ def verify_s1_s4(cfg: Cfg, run_dir: Path, stem: str) -> dict:
 def channel_survey(cfg: Cfg, stem: str, band=(2000.0, 24000.0)) -> dict:
     """DIAGNOSTIC for the UNSPECIFIED channel choice (spec A-01): per-channel S4 level statistics for one file.
     Shows whether the configured channel is anomalous (dead, saturated, or very different); does not select a channel."""
-    from . import audio, dsp
+    from . import dsp
 
-    raw = project_path(cfg, "raw_dir") / f"{stem}.flac"
+    raw = audio.find_raw_file(cfg, stem)
     out = {}
     for ch in range(cfg["paper"]["n_channels_raw"]):
         c2 = type(cfg)({**cfg, "decisions": {**cfg["decisions"], "s1": {**cfg["decisions"]["s1"], "channel_index": ch}}})

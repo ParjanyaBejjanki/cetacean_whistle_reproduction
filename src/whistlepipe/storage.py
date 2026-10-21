@@ -1,8 +1,10 @@
 """Run storage, data lineage and the storage policy.
 
-Layout of one run (nothing outside runs/<run_id>/ is touched; raw audio is never written):
+Layout of one check run (nothing outside <runs_dir>/<run_id>/ is touched; raw audio is never written).
+<runs_dir> is preprocessing_checks/ for check runs; the final dataset uses a temporary run per encounter
+(see dataset.py) and is then packed into preprocessed/encounter_<id>/.
 
-    runs/<run_id>/
+    <runs_dir>/<run_id>/
         run_manifest.json        config snapshot + hashes, seeds, versions, detector checkpoint, file list
         summary.json             end-of-run totals (written by the pipeline)
         logs/run.log             human-readable progress
@@ -19,6 +21,7 @@ from __future__ import annotations
 import csv
 import json
 import platform
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -27,7 +30,7 @@ from typing import Any
 import numpy as np
 import soundfile as sf
 
-from .config import PROJECT_ROOT, Cfg, canonical_hash, project_path
+from .config import PROJECT_ROOT, Cfg, canonical_hash, project_path, protected_raw_dirs
 
 STAGES_STORABLE = ("s1", "s2", "s3", "s4", "s5", "s6", "s8")
 
@@ -36,12 +39,27 @@ class RawDataGuardError(RuntimeError):
     pass
 
 
-def ensure_not_in_raw(path: Path, raw_dir: Path) -> Path:
-    """Refuse any path inside the immutable raw-data directory."""
-    p, r = Path(path).resolve(), Path(raw_dir).resolve()
-    if p == r or r in p.parents:
-        raise RawDataGuardError(f"refusing to write inside the immutable raw-data directory: {p}")
+def ensure_not_in_raw(path: Path, raw_dir: Path | list[Path]) -> Path:
+    """Refuse any path inside an immutable raw-data directory (one folder or a list of folders)."""
+    p = Path(path).resolve()
+    for r in ([raw_dir] if isinstance(raw_dir, (str, Path)) else raw_dir):
+        r = Path(r).resolve()
+        if p == r or r in p.parents:
+            raise RawDataGuardError(f"refusing to write inside the immutable raw-data directory: {p}")
     return p
+
+
+def code_version() -> dict:
+    """git commit of this code and whether src/, configs/ or whistle.py differ from it (None if git is unavailable)."""
+    def git(*a):
+        return subprocess.run(["git", "-C", str(PROJECT_ROOT), *a], capture_output=True, text=True, timeout=30,
+                              check=True).stdout.strip()
+
+    try:
+        return {"git_commit": git("rev-parse", "HEAD"),
+                "git_uncommitted_code_changes": bool(git("status", "--porcelain", "--", "src", "configs", "whistle.py"))}
+    except Exception:   # noqa: BLE001  (no git / not a repository)
+        return {"git_commit": None, "git_uncommitted_code_changes": None}
 
 
 def software_versions() -> dict:
@@ -55,6 +73,7 @@ def software_versions() -> dict:
         "scipy": scipy.__version__,
         "soundfile": sf.__version__,
         "libsndfile": sf.__libsndfile_version__,
+        **code_version(),
     }
     try:
         import torch
@@ -75,12 +94,12 @@ class RunStore:
     def __init__(self, cfg: Cfg, run_id: str, mode: str | None = None, runs_dir: Path | None = None,
                  create: bool = True):
         self.cfg = cfg
-        self.raw_dir = project_path(cfg, "raw_dir")
+        self.raw_dirs = protected_raw_dirs(cfg)
         self.mode = mode or cfg["storage"]["mode"]
         if self.mode not in ("debug", "normal", "minimal"):
             raise ValueError(f"unknown storage mode {self.mode!r}")
         runs_root = Path(runs_dir) if runs_dir else project_path(cfg, "runs_dir")
-        self.dir = ensure_not_in_raw(runs_root / run_id, self.raw_dir)
+        self.dir = ensure_not_in_raw(runs_root / run_id, self.raw_dirs)
         self.run_id = run_id
         self.policy = {s: bool(cfg["storage"][self.mode].get(s, False)) for s in STAGES_STORABLE}
         if create:
@@ -94,7 +113,7 @@ class RunStore:
     # ------------------------------------------------------------------ paths
     def sub(self, name: str, stem: str | None = None) -> Path:
         p = self.dir / name / stem if stem else self.dir / name
-        p = ensure_not_in_raw(p, self.raw_dir)
+        p = ensure_not_in_raw(p, self.raw_dirs)
         p.mkdir(parents=True, exist_ok=True)
         return p
 
@@ -130,7 +149,7 @@ class RunStore:
             json.dump(obj, f, indent=2, default=_json_default)
 
     def write_json(self, path: Path, obj: Any) -> None:
-        ensure_not_in_raw(path, self.raw_dir)
+        ensure_not_in_raw(path, self.raw_dirs)
         self._write_json(path, obj)
 
     # ------------------------------------------------------------------ stage writers

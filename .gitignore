@@ -9,6 +9,8 @@ encounter_191_audio/
 # Preprocessed and intermediate/generated data
 data/
 runs/
+preprocessed/
+preprocessing_checks/
 
 # Large binaries & data dumps
 *.pkl

@@ -147,3 +147,21 @@ def test_numerics_policy_full_float32_and_deterministic(cfg):
     from whistlepipe.storage import software_versions
     v = software_versions()
     assert v["tf32_conv_allowed"] is False and v["deterministic_algorithms"] is True
+
+
+def test_separable_block_type_contract_and_cost_model(cfg):
+    torch.manual_seed(0)
+    m = RidgeNet(16, [(1, 1), (2, 2), (4, 4)], "separable")
+    assert m.receptive_radius() == (8, 8) and m.macs_per_node() == 9 * 16 + 3 * (16 * 9 + 16 * 16) + 16
+    s5 = cfg["decisions"]["s5"]
+    spec = random_spec(300)
+    full = RidgeDetector(m, "t", band_bins(cfg), s5["conditioning"], 100000, 32, "cpu").predict(spec)
+    check_detection_map(full, spec)
+    tiled = RidgeDetector(m, "t", band_bins(cfg), s5["conditioning"], 50, 32, "cpu").predict(spec)
+    assert np.allclose(full.conf, tiled.conf, atol=1e-5)
+
+
+def test_v1_checkpoint_without_block_type_loads_as_dense(cfg, tmp_path):
+    p = tmp_path / "old.pt"
+    _save_ckpt(p, cfg)                                       # arch has no "block_type" key, like ridgenet-v1
+    assert RidgeDetector.from_checkpoint(p, cfg, "cpu").model.block_type == "dense"

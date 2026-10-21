@@ -38,8 +38,10 @@ def fake_raw(tmp_path, cfg):
     x = np.stack([0.2 * np.sin(2 * np.pi * f * t) for f in CHANNEL_TONES_HZ], axis=1)
     path = raw / "1705_20170101_000000_000.flac"
     sf.write(str(path), (x * 32767).astype(np.int16), fs, subtype="PCM_16", format="FLAC")
-    cfg["paths"]["raw_dir"] = str(raw)
+    cfg["paths"]["raw_dirs"] = [str(raw)]
+    cfg["paths"]["synth_raw_dir"] = str(raw)
     cfg["paths"]["runs_dir"] = str(tmp_path / "runs")
+    cfg["paths"]["dataset_dir"] = str(tmp_path / "preprocessed")
     return path
 
 

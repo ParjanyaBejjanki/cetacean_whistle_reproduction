@@ -25,17 +25,33 @@ from .interface import DetectionMap, check_detection_map
 
 
 class RidgeNet(nn.Module):
-    def __init__(self, channels: int = 16, dilations=((1, 1), (2, 1), (4, 2), (8, 2), (1, 1), (2, 1))):
+    """block_type "dense": 3x3 dilated conv per block (ridgenet-v1).
+    block_type "separable": depthwise 3x3 dilated conv + pointwise 1x1 conv per block (same receptive field, far fewer
+    multiply-adds per channel, so more channels/depth fit the same latency budget)."""
+
+    def __init__(self, channels: int = 16, dilations=((1, 1), (2, 1), (4, 2), (8, 2), (1, 1), (2, 1)), block_type: str = "dense"):
         super().__init__()
+        if block_type not in ("dense", "separable"):
+            raise ValueError(block_type)
         self.channels = channels
+        self.block_type = block_type
         self.dilations = [tuple(d) for d in dilations]
         self.stem = nn.Sequential(nn.Conv2d(1, channels, 3, padding=1, bias=False),
                                   nn.BatchNorm2d(channels), nn.ReLU(inplace=True))
-        self.blocks = nn.ModuleList([
-            nn.Sequential(nn.Conv2d(channels, channels, 3, padding=d, dilation=d, bias=False),
-                          nn.BatchNorm2d(channels), nn.ReLU(inplace=True))
-            for d in self.dilations])
+        if block_type == "dense":
+            blocks = [nn.Sequential(nn.Conv2d(channels, channels, 3, padding=d, dilation=d, bias=False),
+                                    nn.BatchNorm2d(channels), nn.ReLU(inplace=True)) for d in self.dilations]
+        else:
+            blocks = [nn.Sequential(nn.Conv2d(channels, channels, 3, padding=d, dilation=d, groups=channels, bias=False),
+                                    nn.Conv2d(channels, channels, 1, bias=False),
+                                    nn.BatchNorm2d(channels), nn.ReLU(inplace=True)) for d in self.dilations]
+        self.blocks = nn.ModuleList(blocks)
         self.head = nn.Conv2d(channels, 1, 1)
+
+    def macs_per_node(self) -> int:
+        c = self.channels
+        per_block = c * c * 9 if self.block_type == "dense" else c * 9 + c * c
+        return 9 * c + len(self.dilations) * per_block + c
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:           # x: (B, 1, T, F) -> logits (B, 1, T, F)
         h = self.stem(x)
@@ -99,7 +115,7 @@ class RidgeDetector:
     def from_checkpoint(cls, path: Path, cfg: Cfg, device: str | None = None) -> "RidgeDetector":
         ck = torch.load(path, map_location="cpu", weights_only=False)
         arch = ck["arch"]
-        model = RidgeNet(arch["channels"], arch["dilations"])
+        model = RidgeNet(arch["channels"], arch["dilations"], arch.get("block_type", "dense"))   # v1 checkpoints: dense
         model.load_state_dict(ck["model_state"])
         s5 = cfg["decisions"]["s5"]
         band = band_bins(cfg)
@@ -109,6 +125,7 @@ class RidgeDetector:
                 k: s5["conditioning"][k] for k in s5["conditioning"] if k in ck["conditioning"]}:
             raise ValueError("checkpoint conditioning differs from pipeline config: retrain or fix the config")
         meta = {"checkpoint": str(path), "checkpoint_sha256": sha256_file(path), "n_params": model.n_params(),
+                "block_type": model.block_type, "macs_per_node": model.macs_per_node(),
                 "receptive_radius_tf": list(model.receptive_radius()), "trained_seed": ck.get("seed"),
                 "metrics": ck.get("metrics")}
         return cls(model, ck["version"], band, s5["conditioning"], s5["tile_frames"], s5["halo_frames"],

@@ -21,8 +21,9 @@ from ..detector.conditioning import condition
 
 
 class SynthSampler:
-    def __init__(self, cfg: Cfg, dcfg: Cfg, windows: np.ndarray, split_id: int):
+    def __init__(self, cfg: Cfg, dcfg: Cfg, windows: np.ndarray, split_id: int, ridge_masks: np.ndarray | None = None):
         self.cfg, self.dcfg = cfg, dcfg
+        self.ridge_masks = ridge_masks          # optional cached label-free masks of real tonal structure (one per window)
         p = cfg["paper"]
         self.fs, self.win, self.hop, self.nfft = int(p["fs_target_hz"]), int(p["win_len"]), int(p["hop"]), int(p["nfft"])
         self.bin_hz = self.fs / self.nfft
@@ -86,6 +87,11 @@ class SynthSampler:
         return env / max(env.max(), 1e-9)
 
     def _draw_snr(self, rng) -> float:
+        mix = self.wc.get("snr_mix")                      # optional [[weight, lo_db, hi_db], ...] (ridgenet-v2b); absent = v1 rule
+        if mix:
+            w = np.array([m[0] for m in mix], float)
+            i = int(rng.choice(len(mix), p=w / w.sum()))
+            return rng.uniform(mix[i][1], mix[i][2])
         lo, hi = self.wc["snr_db"]
         return rng.uniform(lo, 10.0) if rng.random() < 0.5 else rng.uniform(10.0, hi)
 
@@ -222,11 +228,18 @@ class SynthSampler:
 
     def sample(self, index: int, epoch: int = 0, surrogate: bool = False, no_whistles: bool = False) -> dict:
         rng = np.random.default_rng([self.seed, self.split_id, int(epoch), int(index)])
-        bg = self.windows[int(rng.integers(len(self.windows)))].astype(np.float64)
+        widx = int(rng.integers(len(self.windows)))
+        bg = self.windows[widx].astype(np.float64)
+        rmask = None if self.ridge_masks is None else np.asarray(self.ridge_masks[widx])
+        p_rev = float(self.dcfg["synth"]["backgrounds"].get("p_time_reverse", 0.0)) if self.split_id == 0 else 0.0
+        if p_rev > 0 and rng.random() < p_rev:            # training-only augmentation (no extra RNG draw when disabled)
+            bg = bg[::-1].copy()
+            rmask = None if rmask is None else rmask[::-1]   # the line statistic is symmetric under time reversal
         if surrogate:
             bg = self._phase_randomise(bg, rng)
         N = len(bg)
-        B = 10 ** (self._stft_db(bg) / 20)
+        bg_db_full = self._stft_db(bg)
+        B = 10 ** (bg_db_full / 20)
         L_bg = ndimage.uniform_filter1d(np.median(B, axis=0), size=7, mode="nearest")
         whistles = [] if no_whistles else self._draw_whistles(rng, N, L_bg)
         sig_w = np.zeros(N)
@@ -239,6 +252,11 @@ class SynthSampler:
         T = mix_db.shape[0]
         W_mag = 10 ** (self._stft_db(sig_w)[:, sl] / 20) if whistles else np.zeros((T, self.F))
         y, w, gt = self._labels(whistles, W_mag, L_bg[sl], T)
+        n_bg_ignored = 0
+        if self.lc.get("ignore_background_ridges", False) and rmask is not None and not surrogate:
+            bgm = rmask[: y.shape[0]] & (y < 0.3)
+            w[bgm] = 0.0
+            n_bg_ignored = int(bgm.sum())
         return {"x": condition(mix_db, self.cond), "y": y, "w": w, "gt": gt,
                 "meta": {"index": int(index), "n_whistles": len(whistles), "snr_db": [round(wh["snr_db"], 1) for wh in whistles],
-                         "dur_s": [round(wh["dur_s"], 3) for wh in whistles]}}
+                         "dur_s": [round(wh["dur_s"], 3) for wh in whistles], "n_bg_ignored": n_bg_ignored}}

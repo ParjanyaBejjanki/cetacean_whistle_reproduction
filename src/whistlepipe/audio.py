@@ -6,13 +6,14 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import re
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import numpy as np
 import soundfile as sf
 
-from .config import Cfg
+from .config import Cfg, project_path, raw_dirs
 
 
 @dataclass
@@ -31,6 +32,48 @@ class AudioSignal:
 
 def list_raw_files(raw_dir: Path) -> list[Path]:
     return sorted(p for p in Path(raw_dir).iterdir() if p.is_file() and p.suffix.lower() == ".flac")
+
+
+ENCOUNTER_DIR = re.compile(r"encounter_(\d+)_audio")
+
+
+def encounter_of(path: Path) -> int | None:
+    """Encounter id from the raw folder name (encounter_<id>_audio), None for other folders."""
+    m = ENCOUNTER_DIR.fullmatch(Path(path).parent.name)
+    return int(m.group(1)) if m else None
+
+
+def files_by_encounter(cfg: Cfg) -> dict[int, list[Path]]:
+    """{encounter id: sorted raw files} for every configured raw folder."""
+    out: dict[int, list[Path]] = {}
+    for d in raw_dirs(cfg):
+        m = ENCOUNTER_DIR.fullmatch(d.name)
+        if not m:
+            raise ValueError(f"raw folder {d} is not named encounter_<id>_audio")
+        out[int(m.group(1))] = list_raw_files(d)
+    return dict(sorted(out.items()))
+
+
+def list_all_raw_files(cfg: Cfg) -> list[Path]:
+    """Every raw file of every configured raw folder, sorted by file name (= recording time).
+    File names must be unique across folders (the stem identifies a file everywhere downstream)."""
+    files = [p for d in raw_dirs(cfg) for p in list_raw_files(d)]
+    seen: dict[str, Path] = {}
+    for p in files:
+        if p.name in seen:
+            raise ValueError(f"raw file name {p.name} occurs in two folders: {seen[p.name].parent} and {p.parent}")
+        seen[p.name] = p
+    return sorted(files, key=lambda p: p.name)
+
+
+def find_raw_file(cfg: Cfg, name: str) -> Path:
+    """Raw file by name or stem, searched in every configured raw folder."""
+    stem = Path(name).stem
+    for d in raw_dirs(cfg):
+        p = d / f"{stem}.flac"
+        if p.is_file():
+            return p
+    raise FileNotFoundError(f"{stem}.flac is in none of the raw folders")
 
 
 def audio_info(path: Path) -> dict:
@@ -56,27 +99,47 @@ def sha256_file(path: Path, chunk: int = 8 * 1024 * 1024) -> str:
     return h.hexdigest()
 
 
-def load_manifest_hashes(manifest_csv: Path) -> dict[str, str]:
-    """filename -> sha256 from metadata/manifest_363.csv (read-only; used only to verify identity)."""
+def load_manifest_rows(manifest_csv: Path) -> dict[str, dict]:
+    """filename -> manifest row (read-only). Empty if the manifest does not exist."""
     if not Path(manifest_csv).exists():
         return {}
     with open(manifest_csv, newline="", encoding="utf-8") as f:
-        return {r["filename"]: r["sha256"] for r in csv.DictReader(f)}
+        return {r["filename"]: r for r in csv.DictReader(f)}
+
+
+def load_manifest_hashes(manifest_csv: Path) -> dict[str, str]:
+    """filename -> sha256 from the raw-file manifest (read-only; used only to verify identity)."""
+    return {k: r["sha256"] for k, r in load_manifest_rows(manifest_csv).items()}
+
+
+def missing_from_manifest(cfg: Cfg, files: list[Path]) -> list[str]:
+    """Names of ``files`` that have no row in [paths].manifest_csv (all of them if the manifest does not exist)."""
+    rows = load_manifest_rows(project_path(cfg, "manifest_csv"))
+    return [p.name for p in files if p.name not in rows]
 
 
 def read_channel_int16(path: Path, channel: int, block: int = 5_000_000) -> tuple[np.ndarray, int, int]:
-    """Read ONE channel of a (multi-channel) file as int16, in blocks. Returns (samples, fs, n_channels)."""
+    """Read ONE channel of a (multi-channel) file as int16, in blocks. Returns (samples, fs, n_channels).
+    A FLAC header states the full length even when the file was cut off (e.g. an interrupted download), so the
+    decoded length is checked against it: a truncated or corrupt file raises ValueError instead of being half-used."""
     parts = []
     with sf.SoundFile(str(path), mode="r") as f:   # read-only
         if not (0 <= channel < f.channels):
             raise ValueError(f"channel {channel} out of range for {f.channels}-channel file {path.name}")
-        while True:
-            b = f.read(block, dtype="int16", always_2d=True)
-            if len(b) == 0:
-                break
-            parts.append(np.ascontiguousarray(b[:, channel]))
-        fs, n_ch = f.samplerate, f.channels
-    return np.concatenate(parts) if parts else np.zeros(0, np.int16), fs, n_ch
+        try:
+            while True:
+                b = f.read(block, dtype="int16", always_2d=True)
+                if len(b) == 0:
+                    break
+                parts.append(np.ascontiguousarray(b[:, channel]))
+        except sf.LibsndfileError as e:
+            raise ValueError(f"{path.name}: truncated or corrupt file, decoding stopped after "
+                             f"{sum(map(len, parts))} of {f.frames} samples ({e})") from e
+        fs, n_ch, n_header = f.samplerate, f.channels, f.frames
+    x = np.concatenate(parts) if parts else np.zeros(0, np.int16)
+    if len(x) != n_header:
+        raise ValueError(f"{path.name}: truncated or corrupt file, decoded {len(x)} samples but the header says {n_header}")
+    return x, fs, n_ch
 
 
 def s1_select_channel(path: Path, cfg: Cfg) -> AudioSignal:

@@ -62,8 +62,8 @@ def train_detector(cfg: Cfg, dcfg: Cfg, version: str = "ridgenet-v1") -> Path:
     set_deterministic()
     dev = resolve_device(tr["device"])
     band = band_bins(cfg)
-    model = RidgeNet(m["channels"], m["dilations"]).to(dev)
-    print(f"RidgeNet: {model.n_params()} parameters, receptive radius (t,f) = {model.receptive_radius()}, device={dev}", flush=True)
+    model = RidgeNet(m["channels"], m["dilations"], m.get("block_type", "dense")).to(dev)
+    print(f"RidgeNet[{model.block_type}]: {model.n_params()} parameters, {model.macs_per_node()} MACs/node, receptive radius (t,f) = {model.receptive_radius()}, device={dev}", flush=True)
 
     steps, bs = int(tr["steps"]), int(tr["batch_size"])
     ds = SynthTrainDataset(cfg, dcfg, "train", steps * bs)
@@ -87,7 +87,7 @@ def train_detector(cfg: Cfg, dcfg: Cfg, version: str = "ridgenet-v1") -> Path:
             log.append({"step": step, **v}); print("VAL", json.dumps(v), flush=True)
             if v["node_f1"] > best:
                 best = v["node_f1"]
-                torch.save({"model_state": model.state_dict(), "arch": {"channels": m["channels"], "dilations": [list(d) for d in m["dilations"]]},
+                torch.save({"model_state": model.state_dict(), "arch": {"channels": m["channels"], "dilations": [list(d) for d in m["dilations"]], "block_type": m.get("block_type", "dense")},
                             "band": list(band), "conditioning": dict(cfg["decisions"]["s5"]["conditioning"]), "version": version,
                             "seed": seed, "metrics": {"step": step, **v}, "train_cfg": dcfg.to_dict()["train"]}, out / "checkpoint.pt")
     (out / "train_log.json").write_text(json.dumps(log, indent=1), encoding="utf-8")
@@ -97,5 +97,6 @@ def train_detector(cfg: Cfg, dcfg: Cfg, version: str = "ridgenet-v1") -> Path:
             "train_wall_s": round(time.time() - t0, 1), "software": software_versions(),
             "note": "trained on SYNTHETIC data only; node F1 here is a synthetic-validation number, not a real-data score."}
     (out / "train_info.json").write_text(json.dumps(info, indent=2), encoding="utf-8")
+    (out / "detector_config.json").write_text(json.dumps(dcfg.to_dict(), indent=2), encoding="utf-8")   # full effective config incl. overrides
     print("saved", out, flush=True)
     return out
