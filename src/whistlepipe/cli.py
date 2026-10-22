@@ -221,6 +221,9 @@ def main(argv=None) -> int:
     c.add_argument("--bench-spec", default=None, help="stored S4 .npy (relative to project) for latency measurement")
     c.set_defaults(fn=cmd_compare_synth)
 
+    from .vaegmm.cli import add_commands as add_vaegmm_commands   # VAE-GMM training / GMM / evaluation
+    add_vaegmm_commands(sub)
+
     args = ap.parse_args(argv)
     return args.fn(args)
 

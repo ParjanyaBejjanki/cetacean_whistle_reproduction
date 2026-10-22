@@ -45,3 +45,9 @@ ENV/
 .DS_Store
 Thumbs.db
 Desktop.ini
+
+# VAE-GMM: large training / evaluation outputs (lineage JSON and logs stay tracked)
+models/vaegmm/**/checkpoints/
+models/vaegmm/_eval_cache/
+models/vaegmm/_gates/smoke_*/
+models/eval_weights/

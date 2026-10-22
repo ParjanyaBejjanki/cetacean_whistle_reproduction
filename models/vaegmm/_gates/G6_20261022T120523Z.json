@@ -1,0 +1,39 @@
+{
+  "gate": "G6",
+  "criterion": ">= 95 % of 4,000 real images have |L - n_frames| <= 2 and >= 95 % have |df - bandwidth/93.75 Hz| <= 1.5 bins",
+  "passed": true,
+  "values": {
+    "n": 4000,
+    "all_valid": true,
+    "frac_L_within_2": 1.0,
+    "frac_df_within_1p5_bins": 1.0,
+    "L_abs_err_quantiles_50_95_100": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "df_abs_err_quantiles_50_95_100": [
+      0.19296000000000002,
+      0.6437440000000001,
+      1.3931199999999997
+    ]
+  },
+  "utc": "2026-10-22T12:05:23Z",
+  "config_effective_hash": "3b0e5ec4412b7a318632aa0270cbf32e1479636d066214bbb1d6fc1a37f5b228",
+  "software": {
+    "python": "3.11.0",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "numpy": "2.4.4",
+    "scipy": "1.17.1",
+    "soundfile": "0.13.1",
+    "libsndfile": "1.2.2",
+    "git_commit": "2cf1fc179654affd0428f3cc4a3c2ac4fee2a874",
+    "git_uncommitted_code_changes": true,
+    "torch": "2.14.0+cu130",
+    "cuda_available": true,
+    "tf32_conv_allowed": false,
+    "tf32_matmul_allowed": false,
+    "deterministic_algorithms": true,
+    "cuda_device": "NVIDIA GeForce RTX 5060 Laptop GPU"
+  }
+}

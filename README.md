@@ -1,7 +1,8 @@
 # whistlepipe — preprocessing implementation
 
 Implements S1–S9 of `resources/PREPROCESSING_SPECIFICATION.md` (the authoritative specification; nothing from it is
-repeated here beyond what is needed to run and extend the code). The VAE/GMM is **not** part of this project.
+repeated here beyond what is needed to run and extend the code). The VAE-GMM training, GMM fitting and evaluation
+(`src/whistlepipe/vaegmm/`) follow `resources/TRAINING_SPECIFICATION.md` (see "VAE-GMM" below).
 
 > **Research-integrity statement.** The paper's S5 detector (its reference [31]) and S6 tracker (refs [32], [33]) are
 > unavailable. This project does **not** reproduce them. S5 and S6 here are **newly designed replacements** that satisfy the
@@ -197,3 +198,26 @@ CPU time; so the feasible family is 16 channels, 6–7 dense blocks. All candida
   replacement decisions; `final/images_index.csv` carries `n_frames`, so a dataset-level filter can be applied later **without**
   re-running preprocessing — but that is a deliberate downstream decision, not something tuned to the paper.
 * Single channel (index 0, arbitrary); channel fusion is not implemented.
+
+## VAE-GMM (training, GMM, evaluation)
+Authoritative: `resources/TRAINING_SPECIFICATION.md` (discrepancy report, corrected specification, decisions, deviations,
+gates); configuration `configs/vaegmm.toml` (its `[paper]` section is locked in `vaegmm/config.py`). Only deviation from a
+stated paper value: batch 128 on one GPU (paper 7 x 128) with linearly scaled learning rates (1.4286e-4 / 2.8571e-5).
+```bash
+python whistle.py vae-experiments                         # experiment matrix V1-V8 (spec §3.8)
+python whistle.py vae-gates                               # gates that do not train: G1 data, G2 numerics, G6 features
+python whistle.py vae-gates --gate all --allow-training   # + G3 smoke, G4 overfit, G5 timing (short trainings)
+python whistle.py train-vae --experiment V1               # main model, 300 epochs (--resume continues an interrupted run)
+python whistle.py fit-gmm --experiment V1 --K 10000       # encode unrotated means, full-covariance EM (about 7 h at K = 10k)
+python whistle.py vae-eval recon --experiment V1          # Table 1
+python whistle.py fetch-eval-weights --approved           # Inception-V3 + VGG-16 weights (only after approval)
+python whistle.py vae-eval gen --experiment V1 --K 10000  # Table 2 (FID1, FID2, P/R/F1); --source prior for Table 4 (1)
+python whistle.py vae-eval cluster --experiment V1        # Fig. 11 (needs the 7 K fits)
+python whistle.py vae-eval components --experiment V1     # 500 samples per component (Fig. 8)
+python whistle.py vae-eval conditional --experiment V1    # Table 3 + Fig. 12
+python whistle.py vae-eval cost --experiment V1           # Table 6
+python whistle.py vae-eval figures --experiment V1        # Figs. 7-10
+python whistle.py train-ldm --experiment V1 --T 250 500 1000   # Table 5 LDM baseline
+```
+Outputs: `models/vaegmm/<run_id>/` (`train_info.json` with full lineage, `train_log.jsonl`, `checkpoints/`, `latents_mu.npy`,
+`gmm_K<k>/`, `eval/`, `figures/`); gate records in `models/vaegmm/_gates/`. Runs and GMM fits are never overwritten.

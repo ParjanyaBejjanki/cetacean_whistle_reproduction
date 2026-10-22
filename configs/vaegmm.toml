@@ -1,0 +1,147 @@
+# =============================================================================
+# VAE-GMM training / GMM / evaluation configuration
+#
+# Authoritative source: resources/TRAINING_SPECIFICATION.md
+#
+# Tags:
+#   [EXPLICIT]  stated by the paper (location given)
+#   [IMPLIED]   derivable from the paper (derivation in the specification)
+#   [DECISION]  paper is silent; chosen here (NOT paper evidence)
+#   [DEVIATION] differs from a value the paper states; reported with every result
+#
+# Section [paper] is LOCKED: vaegmm/config.py refuses to run if any value differs from the specification.
+# =============================================================================
+schema_version = 1
+
+# ---------------------------------------------------------------- PAPER-DEFINED (locked)
+[paper]
+latent_dim          = 64                       # [EXPLICIT] main model, Table 2 / §IV-D-1
+latent_dims_table1  = [32, 64, 128, 256]       # [EXPLICIT] Table 1
+beta                = 1e-4                     # [EXPLICIT] App. A
+betas_table2        = [1e-2, 1e-4, 1e-6]       # [EXPLICIT] Table 2
+lambda_adv          = 1.0                      # [EXPLICIT] eq. 4, App. A ("WGAN-GP weight lambda")
+lambda_gp           = 5.0                      # [EXPLICIT] eq. 5, App. A
+n_critic            = 3                        # [EXPLICIT] App. A: critic trained 3x per VAE iteration
+epochs              = 300                      # [EXPLICIT] App. A
+lr_vae              = 1e-3                     # [EXPLICIT] App. A (aggregate batch 896)
+lr_critic           = 2e-4                     # [EXPLICIT] App. A (aggregate batch 896)
+critic_adam_beta1   = 0.0                      # [EXPLICIT] App. A "gradient decay factor"
+critic_adam_beta2   = 0.9                      # [EXPLICIT] App. A "squared gradient decay factor"
+batch_per_gpu       = 128                      # [EXPLICIT] App. A
+n_gpus              = 7                        # [EXPLICIT] App. A -> aggregate batch 896
+rotations_deg       = [0, 90, 180, 270]        # [EXPLICIT] App. A, equal probability
+n_components        = 10000                    # [EXPLICIT] main K (Table 3, Figs. 7-10)
+n_components_table2 = [1000, 5000, 10000, 15000]                    # [EXPLICIT] Table 2
+n_components_fig11  = [1000, 3000, 5000, 7000, 10000, 12000, 15000] # [EXPLICIT] Fig. 11
+em_max_iter         = 1500                     # [EXPLICIT] App. B
+em_tol              = 1e-8                     # [EXPLICIT value] App. B; meaning is a [DECISION] (decisions.gmm.tol_mode)
+contour_threshold   = 0.05                     # [EXPLICIT] Fig. 2 (image -> contour -> features)
+fid1_threshold      = 0.1                      # [EXPLICIT] §IV-D-2 (FID1: real and generated binarised)
+fid_input_size      = 224                      # [EXPLICIT] §IV-D-2 bicubic resize, channel replicated to 3
+fid_feature_dim     = 2048                     # [EXPLICIT] §IV-D-2 Inception V3 final pooling layer
+component_samples   = 500                      # [EXPLICIT] Fig. 8 (histograms from 500 samples per component)
+ldm_timesteps       = [250, 500, 1000]         # [EXPLICIT] Table 5
+ldm_batch           = 128                      # [EXPLICIT] App. D
+ldm_epochs          = 300                      # [EXPLICIT] App. D
+ldm_lr              = 5e-4                     # [EXPLICIT] App. D
+ldm_beta_min        = 1e-4                     # [EXPLICIT] App. D, linear schedule
+ldm_beta_max        = 0.02                     # [EXPLICIT] App. D
+# Table 3 conditions [EXPLICIT]; units: L in samples (columns), frequencies in bins (rows)
+table3_conditions = [
+    { no = 1,  feature = "L",       lo = 30, hi = 40 },
+    { no = 2,  feature = "L",       lo = 75, hi = 80 },
+    { no = 3,  feature = "L",       lo = 88, hi = 108 },
+    { no = 4,  feature = "f_min",   lo = 34, hi = 55 },
+    { no = 5,  feature = "f_min",   lo = 40, hi = 53 },
+    { no = 6,  feature = "f_max",   lo = 62, hi = 66 },
+    { no = 7,  feature = "f_max",   lo = 68, hi = 71 },
+    { no = 8,  feature = "df",      lo = 10, hi = 20 },
+    { no = 9,  feature = "df",      lo = 20, hi = 30 },
+    { no = 10, feature = "f_start", lo = 40, hi = 55 },
+    { no = 11, feature = "f_start", lo = 70, hi = 80 },
+    { no = 12, feature = "f_end",   lo = 40, hi = 55 },
+    { no = 13, feature = "f_end",   lo = 70, hi = 80 },
+]
+
+# ---------------------------------------------------------------- DEVIATIONS from stated paper values
+[deviations]
+batch_size      = 128                     # [DEVIATION] one GPU; paper aggregate 896 (7 x 128)
+lr_scaling_rule = "linear"                # [DEVIATION] lr x 128/896 (brief 2026-10-22); experimental starting values
+lr_vae          = 1.4285714285714287e-4   # [DEVIATION] 1e-3 x 128/896
+lr_critic       = 2.857142857142857e-5    # [DEVIATION] 2e-4 x 128/896
+
+# ---------------------------------------------------------------- IMPLEMENTATION DECISIONS (paper silent)
+[decisions.model]
+logvar_param    = true          # [DECISION] FC 4096->2L split: first L = mu, last L = log sigma^2
+init            = "glorot_uniform"   # [DECISION] Glorot-uniform weights, zero biases (MATLAB R2024a layer default)
+critic_norm     = "layernorm_chw_per_channel_affine"   # [DECISION] = GroupNorm(1, C)
+
+[decisions.loss]
+recon           = "sse_sum"     # [DECISION] per-image sum of squared errors (Gaussian NLL up to a constant); matches Table 1's MSE convention
+kl              = "analytic_sum"  # [IMPLIED] KL(q||N(0,I)) summed over latent dims; batch mean
+z_samples       = 1             # [DECISION] one reparameterised sample per image
+adv_log         = "logsigmoid"  # [DECISION] -log D computed as -logsigmoid(logit): identical function, no log(0)
+gp_on           = "sigmoid_output"  # [IMPLIED] eq. 5 penalises grad of D = critic output (post-sigmoid, Table 8)
+fake_for_critic = "reconstruction"  # [DECISION] x_hat = decoder output for z ~ q(z|x) of the critic's real batch (Fig. 4)
+
+[decisions.optim]
+vae_adam_betas  = [0.9, 0.999]  # [DECISION] Adam defaults (paper gives critic betas only)
+adam_eps        = 1e-8          # [DECISION]
+lr_schedule     = "constant"    # [DECISION]
+
+[decisions.train]
+seed               = 20261022   # [DECISION]
+critic_batches     = "fresh"    # [DECISION] each of the 3 critic steps draws a new real batch ([49] Algorithm 1)
+critic_first       = true       # [DECISION] critic steps precede each VAE step ([49] Algorithm 1)
+partial_last_batch = true       # [DECISION] last VAE batch of an epoch keeps the remaining images (180,154 = 1407 x 128 + 58)
+final_model        = "last_epoch"   # [DECISION] no early stopping / model selection (paper describes none)
+precision          = "fp32"     # [DECISION] TF32 off, deterministic algorithms (repository numerics policy)
+
+[decisions.gmm]
+input               = "encoder_mean_unrotated"   # [EXPLICIT] encoder mean outputs; [DECISION] unrotated images
+covariance          = "full"                     # [EXPLICIT] eq. 6 covariance matrices
+init                = "kmeans++_hard_assign"     # [DECISION] k-means++ seeds -> nearest-seed assignment -> one M-step
+reg_covar_rel       = 1e-6                       # [DECISION] Sigma_k += r I, r = reg_covar_rel x mean per-dim variance of the latents
+tol_mode            = "relative_mean_loglik"     # [DECISION] |l_t - l_{t-1}| <= em_tol x |l_t| (Bishop [35] 9.2.2)
+empty_nk            = 1.0                        # [DECISION] components with N_k < empty_nk keep their previous mu/Sigma
+point_chunk         = 2048                       # performance only
+component_chunk     = 500                        # performance only
+
+[decisions.features]
+bin_convention      = "bin = 128 - row"          # [DECISION] 1-based from the bottom (0 Hz -> bin 65); column c -> sample c + 1
+column_frequency    = "mean_active_row"          # [DECISION] mean row of above-threshold pixels per active column (binary image, Fig. 2c)
+length              = "first_to_last_active"     # [DECISION] L = last - first active column + 1
+center_frequency    = "midrange"                 # [DECISION] f_c = (f_min + f_max) / 2 (same definition as preprocessing S8)
+ms_per_sample       = 5.333333333333333          # [IMPLIED] 1024 / 192000 s (Table 3 errors)
+hz_per_bin          = 93.75                      # [IMPLIED] (Table 3 errors)
+
+[decisions.conditional]
+membership          = "a_k > 0"                  # [DECISION] component belongs to the subset if any of its 500 samples meets the condition
+weights_primary     = "eq10"                     # [DECISION] adjusted weights a_k pi_k (eqs. 9-10) + rejection; eq. 8 also reported
+rejection           = true                       # [EXPLICIT] §III-B rejection sampling
+
+[decisions.eval]
+recon_z             = "mean"                     # [DECISION] Table 1 reconstructions use z = mu
+ssim_sigma          = 1.5                        # [DECISION] Gaussian-window SSIM (Wang et al. 2004)
+ssim_k1             = 0.01
+ssim_k2             = 0.03
+fid_weights         = "torchvision inception_v3 IMAGENET1K_V1 (download pending approval)"   # [DECISION]
+fid_resize          = "bicubic, MATLAB imresize convention (Keys a = -0.5, symmetric boundary), no clamping"  # [DECISION]
+pr_features         = "torchvision vgg16 IMAGENET1K_V1 fc2 (download pending approval)"     # [DECISION] per [47]
+pr_k                = 3                          # [47] default
+pr_primary_input    = "unthresholded"            # [DECISION] both variants reported
+n_generated         = "n_real"                   # [DECISION] generated set size = real set size (all 180,154)
+standard_vae_beta   = 1.0                        # [IMPLIED, weak] §IV-D-1 "standard VAEs where beta = 1"
+ldm_one_training_per_T = true                    # [DECISION] beta schedule is defined over T
+
+# ---------------------------------------------------------------- RUNTIME (no effect on results)
+[paths]
+dataset_dir = "preprocessed"
+runs_dir    = "models/vaegmm"
+
+[train]
+device          = "auto"
+log_every       = 200          # VAE steps between log lines
+keep_every      = 25           # keep a checkpoint every N epochs (last.pt is written every epoch)
+sample_every    = 10           # epochs between fixed reconstruction / prior sample grids
+prefetch        = 6            # batches prepared ahead by the loader thread
