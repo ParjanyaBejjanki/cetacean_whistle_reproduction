@@ -16,16 +16,28 @@ Both licences permit free use and modification. Neither permits selling
 unaltered copies, redistributing the clips as stock, or implying endorsement.
 
 Encoding: H.264 High, 8-bit 4:2:0, 3840×2160, 30 fps, CRF 18, 1-second GOP,
-`+faststart`, no audio. Masters are in `_source/`. The previous cut's 1080p
-clips are kept, unused, in `_source/previous-cut/`.
+`+faststart`, no audio. Masters stay outside this repository, in the original
+`whistle-ui/_source/` folder (the previous cut's unused 1080p clips are in
+`_source/previous-cut/` there).
 
 ## Type (`fonts/`)
 
 Cormorant Garamond (Christian Thalmann), IBM Plex Sans and IBM Plex Mono (IBM),
 all under the SIL Open Font License 1.1. Latin subsets, variable weights.
 
+## Recordings and paper
+
+The model is trained on false killer whale (*Pseudorca crassidens*) whistles
+from NOAA's DCLDE 2022 release of the 2017 HICEAS survey (R/V Lasker, file
+prefix `1705`). The page reproduces Park et al., "A Generative Model for
+Cetacean Whistles Using Variational Autoencoder and Mixture of Gaussians",
+*IEEE Access* 14 (2026), pp. 27877–27894. Both are named on the page's last
+screen. The footage shows a humpback whale and dolphins; it is atmosphere,
+not the recorded species.
+
 ## Sound
 
-One synthetic whistle, generated in the browser by `audio-engine.js` when the
-visitor asks for it. It is never presented as a field recording or attributed
+One illustrative whistle, generated in the browser by `audio-engine.js` when
+the visitor asks for it. Its contour is drawn by hand, not by the model, and
+the page says so. It is never presented as a field recording or attributed
 to any animal shown.

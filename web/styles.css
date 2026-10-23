@@ -30,20 +30,21 @@ body{margin:0;color:var(--ink);background:var(--navy);font-family:var(--sans);fo
 .plane video,.plane img{width:100%;height:100%;display:block;object-fit:cover}
 .still-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 body.cam-on .still-fallback{display:none}
-/* depth is the water's own deep blue, never black */
-.shade{position:absolute;inset:0;background:var(--water);opacity:0;will-change:opacity}
+/* Depth is the water's own deep blue, never black. It has no layer of its
+   own: app.js folds it into the planes' opacity over this same blue. */
 /* legibility where the words are: low-left for cinematic lines, left column
    for research. Opacity from JS; nothing else is laid over the footage. */
-.veil{position:absolute;inset:0;opacity:0;will-change:opacity;background:
+.veil{position:absolute;inset:0;opacity:0;visibility:hidden;will-change:opacity;background:
   radial-gradient(120% 70% at 0% 100%,rgba(3,16,29,.62) 0%,rgba(3,16,29,.28) 45%,transparent 70%)}
-#sig{position:absolute;inset:0;width:100%;height:100%}
+#sig{position:absolute;inset:0;width:100%;height:100%;visibility:hidden}
 
-/* ---- the index ---- */
-.bar{position:fixed;z-index:5;top:30px;left:var(--gutter);right:var(--gutter);display:flex;justify-content:space-between;align-items:baseline;pointer-events:none}
-.bar a{pointer-events:auto;color:var(--ink);text-decoration:none;font:400 clamp(11px,.5vw,14px)/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;text-shadow:var(--shadow)}
-.mark{opacity:.85}
+/* ---- the index: a faint scrim keeps it legible over the sunlit surface ---- */
+.bar{position:fixed;z-index:5;top:0;left:0;right:0;padding:28px var(--gutter) 56px;display:flex;justify-content:space-between;align-items:baseline;pointer-events:none;
+  background:linear-gradient(rgba(3,16,29,.5),rgba(3,16,29,.18) 55%,rgba(3,16,29,0))}
+.bar a{pointer-events:auto;color:var(--ink);text-decoration:none;font:400 clamp(12px,.62vw,15px)/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;text-shadow:var(--shadow)}
+.mark{opacity:.9}
 .index{display:flex;gap:34px}
-.index a{opacity:.5;padding:6px 0;border-bottom:1px solid transparent;transition:opacity .5s ease,border-color .5s ease}
+.index a{opacity:.72;padding:6px 0;border-bottom:1px solid transparent;transition:opacity .5s ease,border-color .5s ease}
 .index a:hover,.index a:focus-visible,.index a[aria-current]{opacity:1}
 .index a[aria-current]{border-bottom-color:rgba(238,244,246,.55)}
 .bar a:focus-visible{outline:1px solid var(--pale);outline-offset:6px}
@@ -67,7 +68,12 @@ h2{font-size:clamp(2.9rem,4vw,6.4rem);line-height:.98}
 .lede{max-width:40ch}
 .lede,.body{text-wrap:pretty}
 .term{font-weight:400;color:var(--ink)}
-.step{margin:0 0 22px;font:400 clamp(11px,.5vw,14px)/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--pale);text-shadow:var(--shadow)}
+.step{margin:0 0 22px;font:400 clamp(12px,.6vw,15px)/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--pale);text-shadow:var(--shadow)}
+.cue{margin:34px 0 0;font:400 clamp(12px,.6vw,15px)/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--mist);opacity:.8;text-shadow:var(--shadow)}
+.cite{margin:30px 0 0;max-width:62ch;font:300 clamp(.85rem,.35vw + .55rem,1.05rem)/1.6 var(--sans);color:var(--mist);text-shadow:var(--shadow)}
+.cite i{font-style:italic}
+/* blocks and the opening section take focus from the index links; no ring on a whole block */
+.block:focus,.sec:focus{outline:none}
 
 /* ---- the one sound ---- */
 .hear-row{display:flex;align-items:center;gap:22px;margin-top:34px}
@@ -84,7 +90,7 @@ h2{font-size:clamp(2.9rem,4vw,6.4rem);line-height:.98}
 .hear[aria-busy=true]{cursor:wait;opacity:.65}
 .hear[disabled]{cursor:default;opacity:.45}
 .hear:focus-visible{outline:1px solid var(--pale);outline-offset:6px;border-radius:24px}
-.note{font:400 clamp(10px,.45vw,12px) var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mist);opacity:.75}
+.note{font:400 clamp(12px,.55vw,14px) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mist);opacity:.9}
 
 .progress{position:fixed;z-index:5;left:0;right:0;bottom:0;height:1px;pointer-events:none}
 .progress b{position:absolute;inset:0;background:rgba(238,244,246,.4);transform:scaleX(0);transform-origin:left}
