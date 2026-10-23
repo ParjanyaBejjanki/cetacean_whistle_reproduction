@@ -104,6 +104,8 @@ class Film {
     const sy = scrollY;
     this.top = this.secs.map(s => s.getBoundingClientRect().top + sy);
     this.h = this.secs.map(s => s.offsetHeight);
+    const lab = $('#try');
+    this.labTop = lab ? lab.getBoundingClientRect().top + sy : Infinity;
     const d = Math.min(2, devicePixelRatio || 1);
     this.cv.width = this.W * d; this.cv.height = this.H * d; this.cx.setTransform(d, 0, 0, d, 0, 0);
     // The instrument sits right of the research column, clear of the index.
@@ -133,11 +135,12 @@ class Film {
     this.links.forEach(a => a.addEventListener('click', e => {
       e.preventDefault();
       const p = (window.STOPS || {})[a.dataset.stop], el = document.getElementById(a.dataset.stop);
-      if (p == null) return;
+      const y = a.dataset.stop === 'try' ? this.labTop : p != null ? this.yAt(p) : null;
+      if (y == null) return;
       this.pendingFocus = null;
       if (el && this.blocks.some(b => b.el === el)) this.pendingFocus = el;
       else if (el) el.focus({ preventScroll: true });
-      this.glideTo(this.yAt(p)); this.dirty = true; this.wake();
+      this.glideTo(y); this.dirty = true; this.wake();
     }));
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.shots.forEach(s => s.video && s.video.pause());
@@ -185,6 +188,16 @@ class Film {
 
   render(now) {
     const pos = this.pos = this.posAt(this.cur), R = this.reduced;
+
+    /* ---- parked: the Try-it page covers the screen, so the film stops drawing and decoding ---- */
+    const parked = this.target >= this.labTop - 1;
+    if (parked !== this.parked) {
+      this.parked = parked;
+      $('.world').style.visibility = parked ? 'hidden' : '';
+      this.shots.forEach(s => { if (s.video) s.video.pause(); s.wanted = false; });
+    }
+    this.markIndex(pos);
+    if (parked) return;
 
     /* ---- shots, and the water's depth ----
        The depth shade is the water's own blue laid over the frame, and the
@@ -242,17 +255,22 @@ class Film {
     const vo = (low * .9).toFixed(3);
     if (vo !== this.vo) { this.vo = vo; this.veilEl.style.opacity = vo; this.veilEl.style.visibility = +vo > .002 ? 'visible' : 'hidden'; }
 
-    /* ---- index: the research beat on screen (timings from TEXT) ---- */
+    /* ---- the research instrument ---- */
+    this.drawSignal(pos);
+  }
+
+  /* index: the research beat on screen (timings from TEXT), or the Try-it page once it fills half the screen */
+  markIndex(pos) {
     const T = window.TEXT, order = ['signal', 'model', 'generate'];
     let cur = null;
     order.forEach((id, k) => { const end = order[k + 1] ? T[order[k + 1]][0] : T[id][3] + .09; if (pos >= T[id][0] - .03 && pos < end) cur = id; });
+    if (this.target >= this.labTop - this.vh / 2) cur = 'try';
+    const on = this.target >= this.labTop - 110;
+    if (on !== this.labOn) { this.labOn = on; document.body.classList.toggle('lab-on', on); }
     if (cur !== this.cur_) {
       this.cur_ = cur;
       this.links.forEach(a => a.dataset.stop === cur ? a.setAttribute('aria-current', 'step') : a.removeAttribute('aria-current'));
     }
-
-    /* ---- the research instrument ---- */
-    this.drawSignal(pos);
   }
 
   /* play / pause only; at most two decoders; preload ahead */

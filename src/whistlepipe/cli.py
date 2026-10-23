@@ -152,6 +152,73 @@ def cmd_compare_synth(args) -> int:
     return 0
 
 
+# ----------------------------------------------------------------------------- inference / web demo
+def _progress(stage, frac=None, _last=[None]):
+    if stage != _last[0]:
+        _last[0] = stage
+        print(f"  {stage}", flush=True)
+
+
+def cmd_infer(args) -> int:
+    from .infer import Engine, new_job_id, resolve
+
+    eng = Engine(device=args.device)
+    out = Path(args.out) if args.out else resolve(eng.icfg["output"]["out_dir"]) / new_job_id()
+    r = eng.analyze(args.audio, out, channel=args.channel, n_samples=args.n_samples, seed=args.seed, progress=_progress)
+    for w in r["input"]["warnings"]:
+        print("warning:", w)
+    print(f"{len(r['whistles'])} whistles, {len(r['rejected'])} rejected ({r['timings_s']['total']} s)")
+    print(r["model"]["message"])
+    print(f"results: {out}")
+    return 0
+
+
+def cmd_generate(args) -> int:
+    from .infer import Engine, new_job_id, resolve
+
+    eng = Engine(device=args.device)
+    out = Path(args.out) if args.out else resolve(eng.icfg["output"]["out_dir"]) / ("gen_" + new_job_id())
+    r = eng.generate(out, n=args.n, seed=args.seed, condition=args.condition, fc_hz=args.fc, progress=_progress)
+    print(f"{r['n']} whistles" + (f" with {r['condition']['label']} (acceptance {r['acceptance_rate']})" if r["condition"] else ""))
+    print(f"results: {out}")
+    return 0
+
+
+def cmd_model_status(args) -> int:
+    from .detector.ridgenet import resolve_device
+    from .infer import load_inference_config, load_model
+    from .vaegmm.config import load_vaegmm_config
+
+    icfg = load_inference_config()
+    st = load_model(icfg, load_vaegmm_config(), resolve_device(args.device or icfg["model"]["device"])).status
+    print(json.dumps(st, indent=1))
+    return 0 if st["ready"]["recreate"] else 1
+
+
+def cmd_serve(args) -> int:
+    from .server import serve
+
+    serve(host=args.host, port=args.port, device=args.device)
+    return 0
+
+
+def cmd_export_web(args) -> int:
+    from .webexport import export_examples
+
+    print(json.dumps(export_examples(device=args.device, progress=print), indent=1))
+    return 0
+
+
+def cmd_check_rates(args) -> int:
+    from .ratecheck import check_rates
+
+    cfg = load_pipeline_config(args.config)
+    files = _validation_sets(cfg)[args.set]
+    r = check_rates(files, args.rates, device=args.device, progress=print)
+    print(json.dumps(r["summary"], indent=1))
+    return 0
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(prog="whistle", description=__doc__)
     ap.add_argument("--config", default=None, help="pipeline config TOML (default configs/pipeline.toml)")
@@ -223,6 +290,45 @@ def main(argv=None) -> int:
 
     from .vaegmm.cli import add_commands as add_vaegmm_commands   # VAE-GMM training / GMM / evaluation
     add_vaegmm_commands(sub)
+
+    # inference and the web demo (configs/inference.toml)
+    i = sub.add_parser("infer", help="a recording -> its whistles -> recreation, type, new whistles, sound (runs/infer/<id>/)")
+    i.add_argument("audio", help="WAV / FLAC / OGG / MP3, any rate >= 32 kHz, up to 120 s")
+    i.add_argument("--out", default=None, help="output folder (default runs/infer/<id>)")
+    i.add_argument("--channel", type=int, default=None)
+    i.add_argument("--n-samples", type=int, default=None, help="new whistles of the same type per whistle")
+    i.add_argument("--seed", type=int, default=0)
+    i.add_argument("--device", default=None)
+    i.set_defaults(fn=cmd_infer)
+
+    gn = sub.add_parser("generate", help="new whistles from the GMM, optionally under a Table 3 condition")
+    gn.add_argument("--n", type=int, default=8)
+    gn.add_argument("--condition", type=int, default=None, help="Table 3 condition 1-13")
+    gn.add_argument("--fc", type=float, default=None, help="centre frequency in Hz (default: drawn from the training whistles)")
+    gn.add_argument("--seed", type=int, default=0)
+    gn.add_argument("--out", default=None)
+    gn.add_argument("--device", default=None)
+    gn.set_defaults(fn=cmd_generate)
+
+    ms = sub.add_parser("model-status", help="are the trained files where inference looks for them?")
+    ms.add_argument("--device", default=None)
+    ms.set_defaults(fn=cmd_model_status)
+
+    sv = sub.add_parser("serve", help="the web page plus the inference API (http://127.0.0.1:8000)")
+    sv.add_argument("--host", default=None)
+    sv.add_argument("--port", type=int, default=None)
+    sv.add_argument("--device", default=None)
+    sv.set_defaults(fn=cmd_serve)
+
+    ew = sub.add_parser("export-web", help="example excerpts + their pre-rendered results into web/data/ (static hosting)")
+    ew.add_argument("--device", default=None)
+    ew.set_defaults(fn=cmd_export_web)
+
+    cr = sub.add_parser("check-rates", help="detector on lower-rate copies of real files vs the 500 kHz originals")
+    cr.add_argument("--set", choices=["val1", "val5", "val10", "per_encounter"], default="per_encounter")
+    cr.add_argument("--rates", type=int, nargs="+", default=[96000, 48000])
+    cr.add_argument("--device", default=None)
+    cr.set_defaults(fn=cmd_check_rates)
 
     args = ap.parse_args(argv)
     return args.fn(args)

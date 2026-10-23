@@ -1,0 +1,52 @@
+# =============================================================================
+# Inference and web demo (python whistle.py infer | generate | serve | export-web | model-status)
+#
+# Not part of training or preprocessing: nothing here changes a training or processing hash.
+# Uploads go through S2-S9 exactly as configured in configs/pipeline.toml (the training data's settings).
+# Tags as elsewhere: [DECISION] = chosen here; the paper does not cover a demo.
+# =============================================================================
+
+[model]
+# The trained files are read from the paths the training commands write (models/vaegmm/<run_id>/...):
+#   checkpoints/<checkpoint>                     python whistle.py train-vae --experiment V1
+#   gmm_K<n_components>[_<gmm_tag>]/gmm.npz      python whistle.py fit-gmm --experiment V1   (+ gmm.json beside it)
+#   gmm_K<n_components>/component_features.npy   python whistle.py vae-eval components --experiment V1   (conditional generation only)
+run_id       = "V1_L64_b1e-4_critic"   # main model of the paper (L = 64, beta = 1e-4, with critic)
+checkpoint   = "final.pt"
+n_components = 10000                   # [EXPLICIT] main K
+gmm_tag      = ""
+device       = "auto"                  # auto | cpu | cuda (detector and model)
+
+[input]
+formats            = [".wav", ".flac", ".ogg", ".mp3"]   # whatever libsndfile reads
+min_sample_rate_hz = 32000      # [DECISION] below this the detector band (2-24 kHz) is mostly empty
+full_band_rate_hz  = 48000      # [DECISION] at or above this the whole detector band is present; below it a warning is given
+min_duration_s     = 0.25       # [DECISION]
+max_duration_s     = 120.0      # [DECISION] keeps one job under about a minute
+max_upload_mb      = 200
+default_channel    = 0
+
+[output]
+out_dir           = "runs/infer"   # one folder per job (gitignored)
+n_samples         = 4              # [DECISION] new whistles of the same type per detected whistle
+max_rendered      = 60             # [DECISION] whistles beyond this get images and numbers but no sound files
+contour_threshold = 0.05           # [EXPLICIT] Fig. 2
+audio_rate_hz     = 48000          # [DECISION] sonify.py; 96 kHz is used when a tone goes above 0.45 x 48 kHz
+high_audio_rate_hz = 96000
+clip_margin_s     = 0.05           # [DECISION] recording excerpt: whistle span +/- this
+clip_band_margin_hz = 1000.0       # [DECISION] recording excerpt band-passed to [f_min - this, f_max + this]
+
+[generate]
+max_n            = 16
+weights          = "eq10"          # [DECISION] conditional weights, as Table 3's primary (configs/vaegmm.toml)
+max_draws        = 200000          # rejection sampler limit per request
+fallback_fc_hz   = 9000.0          # [DECISION] only when the training images.csv files are absent
+
+[server]
+host = "127.0.0.1"
+port = 8000
+
+[examples]
+encounters = [191, 279, 331]   # [DECISION] one short excerpt from each, for visitors without recordings
+seconds    = 8.0
+rate_hz    = 96000             # [DECISION] excerpts are resampled from 500 kHz; 96 kHz keeps everything up to 48 kHz

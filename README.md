@@ -25,7 +25,10 @@ configs/detector.toml  S5 architecture, synthetic-data generator, training  (all
 src/whistlepipe/       audio.py(S1) dsp.py(S2-S4) detector/(S5) tracking.py(S6) representation.py(S7-S9)
                        pipeline.py(orchestrator) storage.py(lineage/policy) dataset.py(final layout) manifest.py
                        checks.py plotting.py cli.py
-                       synth/(synthetic training data)  train.py  evaluate.py
+                       synth/(synthetic training data)  train.py  evaluate.py  vaegmm/(VAE-GMM)
+                       infer.py(inference engine) sonify.py(image -> sound) server.py(web API) webexport.py ratecheck.py
+configs/inference.toml inference / web demo settings (not part of any training or processing hash)
+web/                   the project webpage (scroll film + "Try it"); web/media4k/*.mp4 and web/data/ are not in git
 tests/                 pytest, small synthetic fixtures; none needs the full dataset
 models/detector/<ver>/ checkpoint.pt, train_info.json, calibration.json, eval_*.json
 data/synthetic/        background banks (real S3 audio windows) and cached synthetic val/test sets
@@ -221,3 +224,33 @@ python whistle.py train-ldm --experiment V1 --T 250 500 1000   # Table 5 LDM bas
 ```
 Outputs: `models/vaegmm/<run_id>/` (`train_info.json` with full lineage, `train_log.jsonl`, `checkpoints/`, `latents_mu.npy`,
 `gmm_K<k>/`, `eval/`, `figures/`); gate records in `models/vaegmm/_gates/`. Runs and GMM fits are never overwritten.
+
+## Inference and the web demo
+A recording goes through S2-S9 exactly as the training data did (`configs/pipeline.toml`; the processing hash is checked
+against `preprocessed/dataset_info.json`), then through the trained model, and every image is turned back into sound by
+the paper's own Fig. 2 chain (threshold 0.05 -> contour -> constant-amplitude tone) at the whistle's own centre frequency
+(`sonify.py`). Settings: `configs/inference.toml`. Uploads: WAV/FLAC/OGG/MP3, any rate >= 32 kHz (below 48 kHz the top of
+the 2-24 kHz detector band is missing and the result says so), one channel, up to 120 s.
+```bash
+python whistle.py model-status              # are the trained files where inference looks for them?
+python whistle.py infer recording.wav       # -> runs/infer/<id>/: result.json, overview.png, per-whistle PNG + WAV
+python whistle.py generate --n 8            # new whistles from the GMM; --condition 1..13 = Table 3, --fc 9000 fixes the pitch
+python whistle.py serve                     # the page + API on http://127.0.0.1:8000 ("Try it" section)
+python whistle.py export-web                # example excerpts + pre-rendered results -> web/data/ (static hosting)
+python whistle.py check-rates               # detector on 96 / 48 kHz copies of real files vs the 500 kHz originals
+```
+The trained files are read from where the training commands write them; nothing else needs to change after training
+(`serve` also offers `POST /api/reload-model`):
+
+| File | Written by | Enables |
+|---|---|---|
+| `models/vaegmm/V1_L64_b1e-4_critic/checkpoints/final.pt` | `train-vae --experiment V1` | recreation (decoder of the encoder mean) |
+| `models/vaegmm/V1_L64_b1e-4_critic/gmm_K10000/gmm.npz` + `gmm.json` | `fit-gmm --experiment V1` | whistle type (eqs. 11-12), new whistles of that type, generation |
+| `models/vaegmm/V1_L64_b1e-4_critic/gmm_K10000/component_features.npy` | `vae-eval components --experiment V1` | generation under a Table 3 condition (eqs. 9-10 + rejection) |
+
+Until the files exist, the input side (detection, images, the recording and its contour as sound) works and the model
+panels say what is missing. With the VAE but no GMM, "new whistles" come from the encoder's own spread (a standard VAE
+step, labelled as not the paper's method). Checked so far (2026-10-24): on 25 real training images, the tone run back
+through S2-S4 follows the image's contour to a median 0.6 Hz (worst image 1.1 Hz; tests/test_sonify.py); the detector
+on 96 / 48 / 44.1 kHz copies of 8 real files (one per encounter, 1,174 tracks) finds 99.8 / 99.4 / 99.7 % of the 500 kHz
+tracks at 99.7 / 99.5 / 99.1 % precision (python whistle.py check-rates).
