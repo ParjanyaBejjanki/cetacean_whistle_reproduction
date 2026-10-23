@@ -1,0 +1,98 @@
+/* Cetacean Acoustic Lab — an edited descent through real water.
+   Desktop-first. Footage is never graded; words sit where the water is empty. */
+
+/* ---- type: local, OFL-licensed variable fonts ---- */
+@font-face{font-family:'Cormorant Garamond';src:url(fonts/cormorant-garamond.woff2) format('woff2');font-weight:300 700;font-style:normal;font-display:swap}
+@font-face{font-family:'Cormorant Garamond';src:url(fonts/cormorant-garamond-italic.woff2) format('woff2');font-weight:300 700;font-style:italic;font-display:swap}
+@font-face{font-family:'IBM Plex Sans';src:url(fonts/ibm-plex-sans.woff2) format('woff2');font-weight:100 700;font-style:normal;font-display:swap}
+@font-face{font-family:'IBM Plex Mono';src:url(fonts/ibm-plex-mono.woff2) format('woff2');font-weight:400;font-style:normal;font-display:swap}
+
+:root{
+  --ink:#eef4f6;
+  --mist:#bccfd8;
+  --pale:#a9cfe0;
+  --navy:#03101d;
+  --water:#05284a;   /* the deep water of the footage itself (sampled) */
+  --serif:'Cormorant Garamond','Cormorant',Garamond,'Times New Roman',serif;
+  --sans:'IBM Plex Sans','Segoe UI',system-ui,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  --gutter:7.5vw;
+  --shadow:0 1px 2px rgba(2,10,20,.55),0 2px 28px rgba(2,10,20,.45);
+}
+*{box-sizing:border-box}
+html{background:var(--navy)}
+body{margin:0;color:var(--ink);background:var(--navy);font-family:var(--sans);font-weight:300;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+
+/* ---- the water ---- */
+.world{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:var(--water)}
+.camera{position:absolute;inset:0}
+.plane{position:absolute;inset:0;visibility:hidden;opacity:0;will-change:opacity,transform;transform-origin:50% 45%}
+.plane video,.plane img{width:100%;height:100%;display:block;object-fit:cover}
+.still-fallback{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+body.cam-on .still-fallback{display:none}
+/* depth is the water's own deep blue, never black */
+.shade{position:absolute;inset:0;background:var(--water);opacity:0;will-change:opacity}
+/* legibility where the words are: low-left for cinematic lines, left column
+   for research. Opacity from JS; nothing else is laid over the footage. */
+.veil{position:absolute;inset:0;opacity:0;will-change:opacity;background:
+  radial-gradient(120% 70% at 0% 100%,rgba(3,16,29,.62) 0%,rgba(3,16,29,.28) 45%,transparent 70%)}
+#sig{position:absolute;inset:0;width:100%;height:100%}
+
+/* ---- the index ---- */
+.bar{position:fixed;z-index:5;top:30px;left:var(--gutter);right:var(--gutter);display:flex;justify-content:space-between;align-items:baseline;pointer-events:none}
+.bar a{pointer-events:auto;color:var(--ink);text-decoration:none;font:400 clamp(11px,.5vw,14px)/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;text-shadow:var(--shadow)}
+.mark{opacity:.85}
+.index{display:flex;gap:34px}
+.index a{opacity:.5;padding:6px 0;border-bottom:1px solid transparent;transition:opacity .5s ease,border-color .5s ease}
+.index a:hover,.index a:focus-visible,.index a[aria-current]{opacity:1}
+.index a[aria-current]{border-bottom-color:rgba(238,244,246,.55)}
+.bar a:focus-visible{outline:1px solid var(--pale);outline-offset:6px}
+
+/* ---- words: one fixed layer, blocks cross-fade in place ---- */
+#film{position:relative;z-index:2}
+.sec{height:calc(var(--s) * 100vh)}
+.block{position:fixed;left:var(--gutter);opacity:0;visibility:hidden;will-change:opacity,transform}
+.block-low{bottom:14vh;max-width:44vw}
+.block-top{top:21vh;max-width:37vw}
+
+h1,h2{margin:0;font-family:var(--serif);font-weight:300;letter-spacing:-.005em;text-shadow:var(--shadow);font-feature-settings:'liga','dlig' 0}
+h1 i,h2 i{font-style:italic;font-weight:300;color:#dcebf1}
+h1{font-size:clamp(3.4rem,4.8vw,8rem);line-height:.96}
+/* headings break only where the copy breaks */
+h1,h2{white-space:nowrap}
+h2{font-size:clamp(2.9rem,4vw,6.4rem);line-height:.98}
+.block-top h2{font-size:clamp(2.2rem,2.7vw,4.6rem);line-height:1.03}
+
+.lede,.body{margin:28px 0 0;max-width:34ch;font:300 clamp(1rem,.55vw + .55rem,1.5rem)/1.62 var(--sans);color:var(--mist);text-shadow:var(--shadow)}
+.lede{max-width:40ch}
+.lede,.body{text-wrap:pretty}
+.term{font-weight:400;color:var(--ink)}
+.step{margin:0 0 22px;font:400 clamp(11px,.5vw,14px)/1 var(--mono);letter-spacing:.22em;text-transform:uppercase;color:var(--pale);text-shadow:var(--shadow)}
+
+/* ---- the one sound ---- */
+.hear-row{display:flex;align-items:center;gap:22px;margin-top:34px}
+.hear{display:inline-flex;align-items:center;gap:14px;padding:0;background:none;border:0;color:var(--ink);font:400 14px var(--sans);letter-spacing:.03em;cursor:pointer}
+.ring{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;transition:background .5s ease}
+.ring svg{display:block;width:40px;height:40px;transform:rotate(-90deg)}
+.ring .track{fill:none;stroke:rgba(238,244,246,.45);stroke-width:1}
+.ring .fill{fill:none;stroke:var(--pale);stroke-width:1.6;stroke-linecap:round;stroke-dasharray:106.8;stroke-dashoffset:106.8}
+.ring .p,.ring .s{fill:var(--ink);transform:rotate(90deg);transform-origin:20px 20px}
+.ring .s,[aria-pressed=true] .ring .p{display:none}
+[aria-pressed=true] .ring .s{display:block}
+.hear:hover .ring .track{stroke:rgba(238,244,246,.9)}
+.hear[aria-pressed=true] .ring{background:rgba(169,207,224,.12)}
+.hear[aria-busy=true]{cursor:wait;opacity:.65}
+.hear[disabled]{cursor:default;opacity:.45}
+.hear:focus-visible{outline:1px solid var(--pale);outline-offset:6px;border-radius:24px}
+.note{font:400 clamp(10px,.45vw,12px) var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mist);opacity:.75}
+
+.progress{position:fixed;z-index:5;left:0;right:0;bottom:0;height:1px;pointer-events:none}
+.progress b{position:absolute;inset:0;background:rgba(238,244,246,.4);transform:scaleX(0);transform-origin:left}
+
+/* No-JS / boot failure: words stack in normal flow over the poster. */
+body:not(.cam-on) .block{position:static;opacity:1;visibility:visible;padding:20vh var(--gutter) 0;max-width:46rem}
+body:not(.cam-on) .sec{height:auto;min-height:100vh}
+
+@media(prefers-reduced-motion:reduce){
+  .index a{transition:none}
+}

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#04101c" />
+  <title>Cetacean Acoustic Lab — Learning the shape of a whistle</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='4' fill='%23a9cfe0'/%3E%3C/svg%3E" />
+  <link rel="preload" href="fonts/cormorant-garamond.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" href="fonts/ibm-plex-sans.woff2" as="font" type="font/woff2" crossorigin />
+  <link rel="preload" as="image" href="media4k/whale.jpg" />
+  <link rel="stylesheet" href="styles.css" />
+  <!-- Footage: Pixabay 244188 (Pixabay Content License) and Pexels 5743314,
+       Daniel Torobekov (Pexels License). Neither licence requires visible
+       attribution; full sources and terms are recorded in CREDITS.md.
+       Sound: one synthetic tone, generated in the browser on request. -->
+</head>
+<body>
+  <!-- The water: fixed, one camera. Shot planes are built from shots.js. -->
+  <div class="world" aria-hidden="true">
+    <div class="camera" id="camera">
+      <img class="still-fallback" src="media4k/whale.jpg" alt="" />
+      <div class="shade" id="shade"></div>
+    </div>
+    <div class="veil" id="veil"></div>
+    <canvas id="sig"></canvas>
+  </div>
+
+  <header class="bar">
+    <a class="mark" href="#ocean" data-stop="ocean">Cetacean Acoustic Lab</a>
+    <nav class="index" aria-label="Sections">
+      <a href="#signal" data-stop="signal">Signal</a>
+      <a href="#model" data-stop="model">Model</a>
+      <a href="#generate" data-stop="generate">Generate</a>
+    </nav>
+  </header>
+
+  <!-- Sections set the scroll length; their words live in one fixed layer
+       and cross-fade in place (timings in shots.js → TEXT). -->
+  <main id="film">
+    <section class="sec" id="ocean" style="--s:1.6">
+      <div class="block block-low" data-t="hero">
+        <h1>Light fades first.<br /><i>The voices don’t.</i></h1>
+        <p class="lede">A study of dolphin whistle contours — and of a model that learns their shapes well enough to imagine new ones.</p>
+      </div>
+    </section>
+
+    <section class="sec" id="listen" style="--s:1.8">
+      <div class="block block-low" data-t="listen">
+        <h2>Out here,<br /><i>a name is a sound.</i></h2>
+        <p class="body">Among dolphins, a learned whistle can work as a name.</p>
+      </div>
+    </section>
+
+    <section class="sec" id="research" style="--s:3.1">
+      <div class="block block-top" id="signal" data-t="signal">
+        <p class="step">01 · Signal</p>
+        <h2>Hold a whistle still,<br /><i>and it becomes a line.</i></h2>
+        <p class="body">Pressure over time turns into pitch over time — a frequency contour.</p>
+      </div>
+      <div class="block block-top" id="model" data-t="model">
+        <p class="step">02 · Model</p>
+        <h2>Many calls.<br /><i>A handful of shapes.</i></h2>
+        <p class="body">A <span class="term">variational autoencoder</span> compresses each contour into a point in latent space. A <span class="term">Gaussian mixture</span> finds the clusters.</p>
+      </div>
+      <div class="block block-top" id="generate" data-t="generate">
+        <p class="step">03 · Generate</p>
+        <h2>Learn the shape well enough,<br /><i>and a new call can be imagined.</i></h2>
+        <p class="body">Pick a cluster, decode a contour, synthesise the sound.</p>
+        <div class="hear-row">
+          <button id="btn-listen" class="hear" type="button" aria-pressed="false" aria-label="Hear a synthetic whistle, 1.8 seconds">
+            <span class="ring"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17" /><circle class="fill" cx="20" cy="20" r="17" /><path class="p" d="M17 13l10 7-10 7z" /><path class="s" d="M15.5 13h3.4v14h-3.4zM21.6 13h3.4v14h-3.4z" /></svg></span>
+            <span class="lbl">Hear it</span>
+          </button>
+          <span class="note">Synthetic · 1.8 s · not a field recording</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec" id="return" style="--s:1.4">
+      <div class="block block-low" data-t="coda">
+        <h2>Same water,<br /><i>heard differently.</i></h2>
+      </div>
+    </section>
+  </main>
+  <div class="progress" aria-hidden="true"><b id="progress-bar"></b></div>
+  <script src="audio-engine.js"></script><script src="shots.js"></script><script src="app.js"></script>
+</body>
+</html>

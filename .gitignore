@@ -51,3 +51,6 @@ models/vaegmm/**/checkpoints/
 models/vaegmm/_eval_cache/
 models/vaegmm/_gates/smoke_*/
 models/eval_weights/
+
+# Webpage footage: 4K masters are too large for git (sources and encode settings in web/CREDITS.md)
+web/media4k/*.mp4
