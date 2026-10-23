@@ -69,8 +69,8 @@ window.TEXT = {
   hero: [-1, -1, 0.4, 0.54],
   dive: [0.62, 0.72, 1.02, 1.12],
   listen: [1.6, 1.7, 1.9, 1.98],
-  signal: [1.98, 2.04, 2.26, 2.31],
-  model: [2.31, 2.36, 2.52, 2.57],
+  signal: [1.98, 2.04, 2.24, 2.29],
+  model: [2.29, 2.34, 2.52, 2.57],
   generate: [2.57, 2.62, 2.76, 2.81],
   coda: [3.2, 3.5, 99, 99]
 };
@@ -79,10 +79,10 @@ window.TEXT = {
 window.VIZ = {
   on: [1.92, 2.0, 2.79, 2.87],  // scene visible
   rise: [1.98, 2.07],           // Listen: the sound landscape rises, the whistle a ridge across it
-  tip: [2.12, 2.25],            //   the camera tips over until it looks straight down: the ridge becomes a line
-  crowd: [2.3, 2.37],           // Learn: other whistles appear around it
-  gather: [2.38, 2.5],          //   each folds into a point; look-alikes drift together into islands
-  dive: [2.56, 2.64],           // Imagine: the camera sinks into one island; a new point appears
+  tip: [2.11, 2.21],            //   the camera tips over until it looks straight down: the ridge becomes a line
+  crowd: [2.23, 2.37],          // Learn: the sheet tilts away, the line rises and shrinks into the mind; others stream in
+  gather: [2.37, 2.5],          //   each folds into a point; look-alikes wire together into families
+  dive: [2.54, 2.64],           // Imagine: the camera glides into one family; a new point is born between three whistles
   unfold: [2.64, 2.73]          //   it unfolds into a new whistle (the one "Hear it" plays)
 };
 
