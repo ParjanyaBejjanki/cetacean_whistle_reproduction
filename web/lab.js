@@ -22,6 +22,35 @@
     return e;
   };
   const kHz = f => (f / 1000).toFixed(2);
+
+  /* SHALLOWS, the palette of infer.py: quiet = pale sea foam, loud = deep water. The PNGs are plain levels (0-255)
+     and the page colours them, so the overview and every whistle picture share one look. */
+  const SHALLOWS = [[0, [238, 247, 248]], [0.18, [200, 226, 233]], [0.4, [127, 182, 201]], [0.65, [42, 110, 150]], [0.85, [13, 58, 92]], [1, [4, 26, 46]]];
+  const LUT = (() => {
+    const t = new Uint8ClampedArray(256 * 3);
+    for (let i = 0; i < 256; i++) {
+      const v = i / 255; let k = 1;
+      while (k < SHALLOWS.length - 1 && v > SHALLOWS[k][0]) k++;
+      const [a, ca] = SHALLOWS[k - 1], [b, cb] = SHALLOWS[k], w = (v - a) / (b - a);
+      for (let c = 0; c < 3; c++) t[i * 3 + c] = ca[c] + (cb[c] - ca[c]) * w;
+    }
+    return t;
+  })();
+  function paint(canvas, url) {
+    const img = new Image();
+    img.onload = () => {
+      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+      const c = canvas.getContext('2d');
+      c.drawImage(img, 0, 0);
+      const d = c.getImageData(0, 0, canvas.width, canvas.height), p = d.data;
+      for (let i = 0; i < p.length; i += 4) { const v = p[i] * 3; p[i] = LUT[v]; p[i + 1] = LUT[v + 1]; p[i + 2] = LUT[v + 2]; p[i + 3] = 255; }
+      c.putImageData(d, 0, 0);
+    };
+    img.src = url;
+    return canvas;
+  }
+  const shot = (url, label) => paint(h('canvas', { class: 'shot', width: 128, height: 128, role: 'img', 'aria-label': label }), url);
+
   const STAGES = { queued: 'Waiting for the previous job', reading: 'Reading the file', detecting: 'Finding whistles',
                    model: 'Running the model', sound: 'Turning images into sound', overview: 'Drawing the overview',
                    done: 'Done' };
@@ -84,13 +113,19 @@
       if (!r.ok) throw new Error(r.status);
       S.status = await r.json(); S.api = true;
     } catch (_) { S.api = false; }
-    const st = $('#lab-status');
+    // the status line speaks to visitors; the exact file paths stay in its tooltip (and in model-status)
+    const st = $('#lab-status'), txt = st.querySelector('.txt');
     if (!S.api) {
-      st.textContent = 'Live analysis needs the local server: python whistle.py serve. The examples below were analysed in advance.';
+      txt.textContent = 'This copy of the page runs without its analysis server, so here are recordings we analysed earlier.';
+      st.title = 'Live analysis: python whistle.py serve';
       $('#drop').classList.add('off'); $('#file').disabled = true;
     } else {
       const m = S.status.model;
-      st.textContent = m.message + (S.status.matches_training_data === false ? ' Warning: the preprocessing settings differ from the training data.' : '');
+      txt.textContent = (m.ready.same_type ? 'The model is ready. Every whistle you bring gets a recreation and new whistles of its family.'
+        : m.ready.recreate ? 'The model is ready to recreate whistles; its map of whistle families is still being drawn.'
+        : 'The model is still in training. Finding whistles and hearing them works now; the recreations and new whistles appear here once it is done.')
+        + (S.status.matches_training_data === false ? ' (Note: the preprocessing settings differ from the training data.)' : '');
+      st.title = m.message;
       st.classList.toggle('ok', m.ready.recreate);
       $('#nsamples').value = S.status.limits.n_samples;
       $('#drop-n').textContent = `${S.status.limits.formats.map(f => f.slice(1).toUpperCase()).join(', ')} · ${S.status.limits.min_sample_rate_hz / 1000} kHz or more · up to ${S.status.limits.max_duration_s} s · ${S.status.limits.max_upload_mb} MB`;
@@ -99,10 +134,43 @@
     try {
       const ex = await (await fetch('data/examples.json')).json();
       S.examples = ex.examples || [];
-      const box = $('#examples');
-      for (const e of S.examples) box.append(h('button', { class: 'chip', type: 'button', onclick: () => openExample(e) }, e.title, h('small', {}, ` · ${e.n_whistles} whistles`)));
-      box.hidden = !S.examples.length;
+      $('#ex-row').replaceChildren(...S.examples.map((e, i) => exampleCard(e, i)));
+      $('#examples').hidden = !S.examples.length;
     } catch (_) { /* no examples exported */ }
+  }
+
+  /* an example as a card: a small whistle drawn in its own style, the encounter, when, how many whistles */
+  function exampleCard(e, i) {
+    const d = e.source_file.split('_')[1] || '', when = d ? new Date(`${d.slice(0, 4)}-${d.slice(4, 6)}-${d.slice(6, 8)}T00:00:00Z`) : null;
+    const f = [u => 0.5 * Math.sin(3.3 * Math.PI * u) + 0.7 * (u - 0.45), u => -0.8 + 1.6 * Math.pow(u, 0.8), u => -0.6 + 1.3 * Math.sin(Math.PI * u)][i % 3];
+    let dpath = '';
+    for (let k = 0; k <= 60; k++) { const u = k / 60; dpath += `${k ? 'L' : 'M'}${(8 + u * 284).toFixed(1)} ${(27 - f(u) * 20).toFixed(1)}`; }
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg'), p = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    svg.setAttribute('viewBox', '0 0 300 54'); svg.setAttribute('aria-hidden', 'true'); p.setAttribute('d', dpath); svg.append(p);
+    return h('button', { class: 'ex', type: 'button', onclick: () => openExample(e) }, svg,
+             h('b', {}, `Encounter ${e.encounter}`),
+             h('span', {}, `${when ? when.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : ''} · off Hawai‘i`),
+             h('span', {}, `${e.seconds} s · ${e.n_whistles} whistles`), h('em', {}, 'Listen →'));
+  }
+
+  /* the arrival from the film: a whistle line draws itself across, then the heading rises (CSS .anim / .in) */
+  function setupArrival() {
+    const lab = $('#try'), svg = $('#lab-wave'), paths = svg.querySelectorAll('path');
+    const draw = () => {
+      const w = svg.clientWidth, hgt = svg.clientHeight;
+      svg.setAttribute('viewBox', `0 0 ${w} ${hgt}`);
+      let d = '';
+      for (let k = 0; k <= 240; k++) {
+        const u = k / 240, y = 0.5 - 0.22 * Math.sin(3.3 * Math.PI * u + 0.4) * (1 - 0.2 * u) - 0.32 * (u - 0.5);
+        d += `${k ? 'L' : 'M'}${(u * w).toFixed(1)} ${(y * hgt).toFixed(1)}`;
+      }
+      paths.forEach(p => p.setAttribute('d', d));
+    };
+    draw(); addEventListener('resize', draw);
+    lab.classList.add('anim');
+    const io = new IntersectionObserver(es => { if (es.some(e => e.isIntersecting)) { lab.classList.add('in'); io.disconnect(); } },
+                                        { rootMargin: '0px 0px -35% 0px' });
+    io.observe(lab);
   }
 
   async function openExample(e) {
@@ -176,7 +244,7 @@
 
   function drawOverview(r) {
     const o = r.overview, t1 = o.t1_s, fl = o.f_lo_hz / 1000, fh = o.f_hi_hz / 1000;
-    $('#ov-img').src = fileUrl(o.png);
+    paint($('#ov-img'), fileUrl(o.png));
     const svg = $('#ov-svg'), ns = 'http://www.w3.org/2000/svg';
     svg.setAttribute('viewBox', `0 0 ${t1} ${fh - fl}`);
     svg.replaceChildren();
@@ -195,7 +263,11 @@
       const e = rect(w.start_s, w.end_s, w.f_min_hz, w.f_max_hz, 'w');
       e.dataset.i = w.i;
       const t = document.createElementNS(ns, 'title'); t.textContent = `whistle ${w.i + 1}`; e.append(t);
-      e.addEventListener('click', () => select(w.i));
+      e.addEventListener('click', () => {                 // a box is the whistle: select it and hear it as recorded
+        select(w.i);
+        const b = $('#detail .play');
+        if (b && !b.disabled) b.click();
+      });
     });
     const step = [0.5, 1, 2, 5, 10, 20, 30][[0.5, 1, 2, 5, 10, 20, 30].findIndex(s => t1 / s <= 10)] || 30;
     const tAx = $('#ov-t'); tAx.replaceChildren();
@@ -213,7 +285,7 @@
                                              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); select(Math.max(0, Math.min(r.whistles.length - 1, w.i + (e.key === 'ArrowDown' ? 1 : -1))), true); } } },
                    h('td', {}, w.i + 1), h('td', {}, `${w.start_s.toFixed(2)} s`), h('td', {}, `${Math.round(w.duration_ms)} ms`),
                    h('td', {}, `${kHz(w.fc_hz)} kHz`), h('td', {}, `${kHz(w.f_min_hz)}–${kHz(w.f_max_hz)}`),
-                   h('td', {}, w.type ? `k ${w.type.component}` : '—'));
+                   h('td', {}, w.type ? `#${w.type.component}` : '—'));
       tb.append(tr);
     }
   }
@@ -225,10 +297,10 @@
     const d = $('#detail');
     if (i < 0) { d.replaceChildren(h('p', { class: 'lab-note' }, 'Nothing to show: no whistle in this recording could be turned into a model image.')); return; }
     const w = r.whistles[i], m = r.model;
-    const img = (name, alt) => h('img', { class: 'big', src: fileUrl(name), alt, width: 128, height: 128 });
-    const rec = h('div', { class: 'card' }, h('h4', {}, `Whistle ${i + 1} · as recorded`), img(w.input.png, 'model input image'),
+    const img = (name, alt) => shot(fileUrl(name), alt);
+    const rec = h('div', { class: 'card' }, h('h4', {}, `Whistle ${i + 1} · as recorded`), img(w.input.png, 'the whistle as the model sees it'),
                   h('div', { class: 'plays' }, playBtn('Recording', w.recording && fileUrl(w.recording.wav), null, false),
-                    playBtn('Its contour as a tone', w.input.sound && fileUrl(w.input.sound.wav), w.input.sound)),
+                    playBtn('Its shape as a tone', w.input.sound && fileUrl(w.input.sound.wav), w.input.sound)),
                   h('p', { class: 'meta' }, `${w.start_s.toFixed(2)}–${w.end_s.toFixed(2)} s · ${Math.round(w.duration_ms)} ms`, h('br'),
                     `centre ${kHz(w.fc_hz)} kHz · ${kHz(w.f_min_hz)}–${kHz(w.f_max_hz)} kHz`));
     const pending = (title, text) => h('div', { class: 'card pending' }, h('h4', {}, title), h('p', {}, text));
@@ -237,18 +309,19 @@
       const rc = w.recreation;
       recon = h('div', { class: 'card' }, h('h4', {}, 'Recreated by the model'), img(rc.png, 'model recreation'),
                 h('div', { class: 'plays' }, playBtn('Recreation', rc.sound && fileUrl(rc.sound.wav), rc.sound)),
-                h('p', { class: 'meta' }, `PSNR ${rc.psnr_db} dB`, rc.contour_error_hz != null ? ` · contour off by ${rc.contour_error_hz} Hz on average` : ''));
+                h('p', { class: 'meta' }, rc.contour_error_hz != null ? `Its shape stays within ${Math.round(rc.contour_error_hz)} Hz of the original on average` : 'No clear shape in the recreation',
+                  h('br'), `PSNR ${rc.psnr_db} dB`));
     } else recon = pending('Recreated by the model', 'Appears once the trained model is in place (see the note above).');
     let same;
     if (w.samples && w.samples.length) {
       const gmm = r.samples_method === 'gmm';
-      same = h('div', { class: 'card' }, h('h4', {}, gmm ? `Same type · component ${w.type.component}` : 'Close variations'),
-               h('div', { class: 'thumbs' }, w.samples.map((s, j) => h('figure', {}, h('img', { src: fileUrl(s.png), alt: `new whistle ${j + 1}`, width: 128, height: 128 }),
+      same = h('div', { class: 'card' }, h('h4', {}, gmm ? `New whistles · family ${w.type.component}` : 'Close variations'),
+               h('div', { class: 'thumbs' }, w.samples.map((s, j) => h('figure', {}, shot(fileUrl(s.png), `new whistle ${j + 1}`),
                  playBtn(`New ${j + 1}`, s.sound && fileUrl(s.sound.wav), s.sound)))),
-               h('p', { class: 'meta' }, gmm ? `posterior ${w.type.posterior.toFixed(3)} · mixture weight ${(w.type.weight * 100).toPrecision(2)}%`
+               h('p', { class: 'meta' }, gmm ? `Drawn from the same island on the model's map (sure of the family: ${Math.round(w.type.posterior * 100)}%)`
                  : 'Drawn from the encoder\'s own spread around this whistle: a standard VAE step, not the paper\'s generation method (fit the Gaussian mixture for that).'));
-    } else same = pending('New whistles of the same type', m.ready.recreate ? 'Set "New whistles per whistle" above 0.'
-                                                                         : 'Appear once the trained model and its Gaussian mixture are in place.');
+    } else same = pending('New whistles of the same family', m.ready.recreate ? 'Set "New whistles per whistle" above 0.'
+                                                                           : 'Appear once the trained model and its map of whistle families are in place.');
     const opts = h('div', { class: 'popts' },
       h('label', {}, h('input', { type: 'checkbox', checked: S.slow, onchange: e => { S.slow = e.target.checked; stop(); } }), 'Slow ×2 (same pitch)'),
       h('label', {}, 'Pitch shift ', h('input', { type: 'range', min: -3000, max: 3000, step: 100, value: S.shift,
@@ -263,9 +336,10 @@
     const ready = S.api && S.status.model.ready.generate, note = $('#gen-note'), sel = $('#gen-cond');
     if (S.api) for (const c of S.status.conditions) sel.append(h('option', { value: c.no, disabled: !S.status.model.ready.conditional }, `${c.no}. ${c.label}`));
     $('#gen-run').disabled = !ready;
-    note.textContent = !S.api ? 'Generation needs the local server: python whistle.py serve.'
-      : !ready ? S.status.model.message
-      : !S.status.model.ready.conditional ? 'Conditions need component_features.npy (python whistle.py vae-eval components --experiment V1).' : '';
+    note.textContent = !S.api ? 'Imagining new whistles needs the analysis server (python whistle.py serve).'
+      : !ready ? 'Available once the model has finished training.'
+      : !S.status.model.ready.conditional ? 'Asking for a certain kind becomes available once the model has sampled every family.' : '';
+    note.title = S.api ? S.status.model.message : '';
     $('#gen-run').addEventListener('click', () => {
       const fc = $('#gen-fc').value;
       submit(fetch('api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -281,7 +355,7 @@
     const zero = 65, hz = 93.75, ms = 1000 * 1024 / 192000;
     grid.replaceChildren(...r.items.map(it => {
       const f = it.features, fr = f.f_min != null ? `${kHz(it.fc_hz + (f.f_min - zero) * hz)}–${kHz(it.fc_hz + (f.f_max - zero) * hz)} kHz` : '';
-      return h('figure', {}, h('img', { src: fileUrl(it.png, base), alt: `generated whistle ${it.i + 1}`, width: 128, height: 128 }),
+      return h('figure', {}, shot(fileUrl(it.png, base), `generated whistle ${it.i + 1}`),
                playBtn(`Whistle ${it.i + 1}`, it.sound && fileUrl(it.sound.wav, base), it.sound),
                h('figcaption', {}, f.L != null ? `${Math.round(f.L * ms)} ms · ${fr}` : 'empty image', it.component != null ? ` · k ${it.component}` : ''));
     }));
@@ -289,5 +363,5 @@
       : `${r.n} whistles from the mixture. Centre pitch ${r.fc}.`;
   }
 
-  addEventListener('DOMContentLoaded', () => { bindUpload(); init(); });
+  addEventListener('DOMContentLoaded', () => { bindUpload(); setupArrival(); init(); });
 })();

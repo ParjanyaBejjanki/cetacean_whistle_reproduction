@@ -91,8 +91,11 @@ class Jobs:
                 job.update(state="error", error=f"internal error ({type(e).__name__}); see runs/infer/{jid}/error.txt")
 
     def _prune(self):
+        # oldest first: folders from earlier server runs (by name: a timestamp), then this run's jobs in submission
+        # order (ids within one second differ only by their random suffix, so names alone do not order them)
+        order = {jid: k for k, jid in enumerate(self.jobs)}
         dirs = sorted((p for p in self.out_root.iterdir() if p.is_dir() and JOB_ID.match(p.name)),
-                      key=lambda p: p.name.removeprefix("gen_"))
+                      key=lambda p: (p.name in order, order.get(p.name, 0), p.name.removeprefix("gen_")))
         for p in dirs[:-self.keep] if len(dirs) > self.keep else []:
             if self.jobs.get(p.name, {}).get("state") not in ("queued", "running"):
                 shutil.rmtree(p, ignore_errors=True)

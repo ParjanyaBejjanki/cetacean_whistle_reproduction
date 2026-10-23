@@ -41,7 +41,7 @@ class Film {
       this.buildShots(); this.prepare();
       try { this.engine = new CetaceanAudioEngine(); } catch (e) { console.error('[film] audio engine failed:', e); this.engine = null; }
       this.bindListen();
-      try { this.buildSignal(); } catch (e) { console.error('[film] signal build failed:', e); this.cont = null; }
+      try { this.scene = new ResearchScene(); } catch (e) { console.error('[film] scene build failed:', e); this.scene = null; }
       this.measure(); this.bind(); this.read(); this.wake();
       // canvas text uses the web fonts: redraw once they are ready
       if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { this.dirty = true; this.wake(); });
@@ -111,9 +111,8 @@ class Film {
     // The instrument sits right of the research column, clear of the index.
     const col = $('.block-top'), gut = this.W * .075;
     const colRight = col ? gut + Math.min(col.offsetWidth || this.W * .34, this.W * .34) : this.W * .42;
-    this.x0 = Math.max(this.W * .47, colRight + 72); this.x1 = this.W - gut;
-    this.y0 = this.H * .3; this.y1 = this.H * .78;
-    this.fs = Math.round(clamp(this.W * .0055, 12, 15));   // plot type scales with the display
+    const x0 = Math.max(this.W * .47, colRight + 72);
+    if (this.scene) this.scene.resize(this.W, this.H, { x0, x1: this.W - gut, y0: this.H * .2, y1: this.H * .8 });
     this.dirty = true;
   }
   span(i) { return i < this.secs.length - 1 ? this.h[i] : Math.max(1, this.h[i] - this.vh); }
@@ -289,86 +288,18 @@ class Film {
     }
   }
 
-  /* ---- one object, four states, from the engine's own whistle contours ---- */
-  buildSignal() {
-    const E = this.engine, D = 1.8, N = this.N = 220;
-    if (!E) throw new Error('no engine');
-    this.cont = [];
-    for (let id = 1; id <= 8; id++) {
-      const a = new Float32Array(N + 1);
-      for (let i = 0; i <= N; i++) a[i] = E.getFrequencyAtTime(D * i / N, D, id, 9500, 8000);
-      this.cont.push(a);
-    }
-    this.wave = new Float32Array(N + 1);
-    for (let i = 0, p = 0; i <= N; i++) { p += this.cont[0][i] / 1000 * .2; this.wave[i] = Math.sin(p) * Math.sin(Math.PI * i / N); }
-    this.C = [[.2, .55], [.42, .28], [.66, .62], [.3, .8], [.78, .3], [.52, .52], [.86, .72], [.14, .25]];
-  }
+  /* ---- Listen → Learn → Imagine: the 3D scene (scene.js), drawn on the full-screen canvas ---- */
   drawSignal(pos) {
-    if (!this.cont) return;
-    const V = window.VIZ, cx = this.cx, A = win(V.on, pos);
+    if (!this.scene) return;
+    const cx = this.cx, A = win(window.VIZ.on, pos);
     // the canvas is a full-screen layer: hidden whenever nothing is drawn on it
     if (A < .004) { if (this.cvOn) { cx.clearRect(0, 0, this.W, this.H); this.cv.style.visibility = 'hidden'; this.cvOn = false; } return; }
     if (!this.cvOn) { this.cv.style.visibility = 'visible'; this.cvOn = true; }
-    const rev = sm(...V.draw, pos), m1 = sm(...V.pitch, pos), app = sm(...V.appear, pos), m2 = sm(...V.latent, pos), m3 = sm(...V.decode, pos);
-    const { x0, x1, y0, y1, N } = this, w = x1 - x0, h = y1 - y0, yc = (y0 + y1) / 2;
-    const yF = f => y1 - (f - 3000) / 12000 * h;
-    cx.clearRect(0, 0, this.W, this.H); cx.lineJoin = 'round'; cx.lineCap = 'round';
-
-    // frequency axis: only where pitch is meaningful (not under the pressure wave)
-    const ax = Math.max(sm(.5, 1, m1) * (1 - m2), m3) * A;
-    if (ax > .01) {
-      cx.font = `400 ${this.fs}px "IBM Plex Mono", monospace`; cx.textAlign = 'right';
-      cx.lineWidth = 1; cx.setLineDash([1, 6]);
-      [[5000, '5 kHz'], [10000, '10 kHz'], [15000, '15 kHz']].forEach(([f, l]) => {
-        cx.strokeStyle = `rgba(238,244,246,${.22 * ax})`; cx.beginPath(); cx.moveTo(x0, yF(f)); cx.lineTo(x1, yF(f)); cx.stroke();
-        cx.fillStyle = `rgba(188,207,216,${.8 * ax})`; cx.fillText(l, x0 - 14, yF(f) + 4);
-      });
-      cx.setLineDash([]);
-      cx.textAlign = 'right'; cx.fillStyle = `rgba(188,207,216,${.6 * ax})`; cx.fillText('time  →', x1, y1 + 26);
-    }
-    // plot title; every state is a hand-made sketch until the trained model's outputs replace it
-    cx.font = `400 ${this.fs}px "IBM Plex Mono", monospace`; cx.textAlign = 'left';
-    // one title at a time: the outgoing one fades out before the next fades in (they share a spot)
-    const [title, tw] = [['PRESSURE · TIME', 1 - m1], ['PITCH · TIME', m1 * (1 - m2)], ['LATENT SPACE · CLUSTERS', m2 * (1 - m3)], ['DECODED CONTOUR', m3]]
-      .reduce((b, t) => t[1] > b[1] ? t : b), ta = sm(.5, 1, tw) * A;
-    if (ta > .02) { cx.fillStyle = `rgba(169,207,224,${ta * .95})`; cx.fillText(title, x0, y0 - 34); }
-    cx.fillStyle = `rgba(188,207,216,${.55 * A})`; cx.fillText('illustration · not model output', x0, y1 + 26);
-
-    const dots = [];
-    for (const id of [3, 4, 5, 6, 7, 8, 1, 2]) {
-      const c = this.cont[id - 1], C = this.C[id - 1], cX = x0 + C[0] * w, cY = y0 + C[1] * h;
-      let al = id === 1 ? lerp(.95, .35, m2) : id === 2 ? lerp(app * .3, .95, m2) : app * lerp(.32, .2, m3);
-      al *= A; if (al < .01) continue;
-      const col = id === 2 ? m2 * (1 - m3) : m2, cnt = id === 1 ? Math.floor(N * rev) : N;
-      const pts = [];
-      for (let k = 0; k <= cnt; k++) {
-        const px = x0 + k / N * w, py = yF(c[k]);
-        const yy = id === 1 ? lerp(yc + this.wave[k] * h * .28, py, m1) : py;
-        pts.push(lerp(px, cX, col), lerp(yy, cY, col));
-      }
-      if (pts.length < 4) continue;
-      const path = () => { cx.beginPath(); for (let k = 0; k < pts.length; k += 2) k ? cx.lineTo(pts[k], pts[k + 1]) : cx.moveTo(pts[0], pts[1]); };
-      if (col < .98) { path(); cx.strokeStyle = `rgba(214,236,244,${al})`; cx.lineWidth = id === 1 || id === 2 ? 1.6 : 1; cx.stroke(); }
-      if (col > .02) dots.push([cX, cY, al, col, id]);
-    }
-    cx.font = `400 ${this.fs - 2}px "IBM Plex Mono", monospace`; cx.textAlign = 'left';
-    for (const [X, Y, al, col, id] of dots) {
-      // the decoded contour stands alone: the other clusters leave the plot
-      const sel = id === 2, f = sel ? 1 : 1 - m3;
-      if (f < .01) continue;
-      cx.strokeStyle = `rgba(214,236,244,${.22 * col * A * f})`; cx.lineWidth = 1;
-      cx.beginPath(); cx.arc(X, Y, (sel ? 32 : 22) * col, 0, 6.283); cx.stroke();
-      cx.fillStyle = `rgba(238,248,252,${al * col * f})`; cx.beginPath(); cx.arc(X, Y, sel ? 3.4 : 2.4, 0, 6.283); cx.fill();
-      cx.fillStyle = `rgba(188,207,216,${.55 * col * A * (1 - m3)})`; cx.fillText('k' + id, X + 8, Y - 8);
-    }
-    if (this.playT != null && m3 > .4) {
-      const px = x0 + this.playT * w, py = yF(this.cont[1][Math.round(this.playT * N)]);
-      cx.strokeStyle = `rgba(238,244,246,${.35 * m3 * A})`; cx.beginPath(); cx.moveTo(px, y0 - 8); cx.lineTo(px, y1 + 8); cx.stroke();
-      cx.fillStyle = `rgba(238,248,252,${m3 * A})`; cx.beginPath(); cx.arc(px, py, 4, 0, 6.283); cx.fill();
-    }
+    cx.clearRect(0, 0, this.W, this.H);
+    this.scene.draw(cx, pos, A, this.playT);
   }
 
-  /* exactly one tone; user-gated, stoppable, never automatic */
+  /* exactly one tone, the new whistle of the scene; user-gated, stoppable, never automatic */
   bindListen() {
     const btn = $('#btn-listen'); if (!btn) return;
     const lbl = btn.querySelector('.lbl'), fill = btn.querySelector('.ring .fill');
@@ -382,7 +313,8 @@ class Film {
       lbl.textContent = st === 'playing' ? 'Stop' : st === 'busy' ? 'Preparing…' : 'Hear it';
       if (st !== 'playing') { this.playT = null; setFill(0); this.dirty = true; this.wake(); }
     };
-    E.onPlaybackProgress = t => { this.playT = clamp(t / 1.8); setFill(t / 1.8); this.wake(); };
+    const DUR = 1.0;   // the scene's new whistle, played at a listenable length
+    E.onPlaybackProgress = t => { this.playT = clamp(t / DUR); setFill(t / DUR); this.wake(); };
     E.onPlaybackEnd = () => ui('idle');
     let ready = false, busy = false;
     btn.addEventListener('click', async () => {
@@ -390,7 +322,7 @@ class Film {
       if (E.isPlaying) { E.stop(); ui('idle'); return; }
       busy = true; ui('busy');
       try {
-        if (!ready) { await E.synthesizeWhistleBuffer({ componentId: 2, duration: 1.8 }); ready = true; }
+        if (!ready) { await E.synthesizeFromContour(this.scene ? this.scene.newWhistleHz(400) : [8000, 12000], DUR); ready = true; }
         E.play(); ui('playing');
       } catch (e) { ui('idle'); }
       busy = false;

@@ -245,17 +245,23 @@ def save_png(path: Path, img: np.ndarray) -> str:
     return path.name
 
 
+# Spectrogram palette of the page ("shallows": quiet = pale sea foam, loud = deep water). web/lab.js holds the same
+# stops and colours overview.png and the 128 x 128 images in the browser; the PNGs themselves stay plain levels.
+SHALLOWS = [(0.0, "#eef7f8"), (0.18, "#c8e2e9"), (0.4, "#7fb6c9"), (0.65, "#2a6e96"), (0.85, "#0d3a5c"), (1.0, "#041a2e")]
+
+
 def overview_png(path: Path, s4, pcfg: Cfg, boxes: list[dict], rejected: list[dict], max_cols: int = 2400) -> dict:
     """The recording's spectrogram over the detector band, in dB above the local noise floor. Writes ``path`` (the
-    bare image, full bleed: the page draws axes and clickable boxes over it) and ``<stem>_annotated.png`` (axes,
-    kept whistles boxed and numbered, rejected ones dashed) for reading results without the page."""
+    bare image as 8-bit levels, 3..30 dB above the floor -> 0..255, full bleed: the page colours it and draws axes and
+    clickable boxes over it) and ``<stem>_annotated.png`` (coloured, with axes, kept whistles boxed and numbered,
+    rejected ones dashed) for reading results without the page."""
     import matplotlib
 
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.colors import LinearSegmentedColormap
 
-    water = LinearSegmentedColormap.from_list("water", ["#03101d", "#0b3a5c", "#3f7fa6", "#a9cfe0", "#f4fbff"])
+    shallows = LinearSegmentedColormap.from_list("shallows", SHALLOWS)
     from .detector.conditioning import noise_floor_db
 
     k_lo, k_hi = pcfg["decisions"]["s5"]["band_lo_hz"], pcfg["decisions"]["s5"]["band_hi_hz"]
@@ -269,26 +275,26 @@ def overview_png(path: Path, s4, pcfg: Cfg, boxes: list[dict], rejected: list[di
     dur = s4.n_frames * s4.hop_s
     from PIL import Image
 
-    rgb = (water(np.clip((db.T[::-1] - 3) / 27, 0, 1))[..., :3] * 255).round().astype(np.uint8)
-    Image.fromarray(rgb, mode="RGB").save(path)
+    lev = np.clip((db.T[::-1] - 3) / 27, 0, 1)
+    Image.fromarray((lev * 255).round().astype(np.uint8), mode="L").save(path)
     annotated = path.with_name(path.stem + "_annotated.png")
-    fig = plt.figure(figsize=(16, 4.2), dpi=100, facecolor="#03101d")
-    ax = fig.add_axes([0.045, 0.14, 0.945, 0.8], facecolor="#03101d")
-    ax.imshow(db.T, origin="lower", aspect="auto", cmap=water, vmin=3, vmax=30,
+    fig = plt.figure(figsize=(16, 4.2), dpi=100, facecolor="#eef7f8")
+    ax = fig.add_axes([0.045, 0.14, 0.945, 0.8], facecolor="#eef7f8")
+    ax.imshow(db.T, origin="lower", aspect="auto", cmap=shallows, vmin=3, vmax=30,
               extent=[0, dur, bins[0] * s4.bin_hz / 1000, bins[-1] * s4.bin_hz / 1000], interpolation="nearest")
     for b in boxes:
         ax.add_patch(plt.Rectangle((b["start_s"], b["f_min_hz"] / 1000 - 0.3), b["end_s"] - b["start_s"],
-                                   (b["f_max_hz"] - b["f_min_hz"]) / 1000 + 0.6, fill=False, ec="#f4fbff", lw=1.3))
-        ax.text(b["start_s"], b["f_max_hz"] / 1000 + 0.5, str(b["i"] + 1), color="#f4fbff", fontsize=10, fontweight="bold")
+                                   (b["f_max_hz"] - b["f_min_hz"]) / 1000 + 0.6, fill=False, ec="#0b2f4d", lw=1.2))
+        ax.text(b["start_s"], b["f_max_hz"] / 1000 + 0.5, str(b["i"] + 1), color="#0b2f4d", fontsize=10, fontweight="bold")
     for r in rejected:
         if r.get("f_min_hz") is not None:
             ax.add_patch(plt.Rectangle((r["start_s"], r["f_min_hz"] / 1000 - 0.25), r["end_s"] - r["start_s"],
-                                       (r["f_max_hz"] - r["f_min_hz"]) / 1000 + 0.5, fill=False, ec="#e0a96d", lw=0.9, ls="--"))
-    ax.set_xlabel("time (s)", color="#bccfd8")
-    ax.set_ylabel("kHz", color="#bccfd8")
-    ax.tick_params(colors="#bccfd8", labelsize=8)
+                                       (r["f_max_hz"] - r["f_min_hz"]) / 1000 + 0.5, fill=False, ec="#b5762f", lw=1.0, ls="--"))
+    ax.set_xlabel("time (s)", color="#24435a")
+    ax.set_ylabel("kHz", color="#24435a")
+    ax.tick_params(colors="#24435a", labelsize=8)
     for s in ax.spines.values():
-        s.set_color("#33495a")
+        s.set_color("#9fc2cf")
     fig.savefig(annotated, facecolor=fig.get_facecolor())
     plt.close(fig)
     return {"png": path.name, "annotated_png": annotated.name, "t1_s": round(dur, 3),

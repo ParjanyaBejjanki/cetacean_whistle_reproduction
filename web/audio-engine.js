@@ -188,6 +188,29 @@ class CetaceanAudioEngine {
   }
 
   /**
+   * A tone that follows an arbitrary pitch contour (Hz, evenly spaced over ``duration``), with the same envelope and
+   * soft harmonics as synthesizeWhistleBuffer. Used for the film's hand-drawn "new whistle".
+   */
+  async synthesizeFromContour(freqs, duration = 1.0, harmonicRatio = 0.35) {
+    await this.initContext();
+    const sr = this.ctx.sampleRate, n = Math.floor(duration * sr), m = freqs.length;
+    const buf = this.ctx.createBuffer(1, n, sr), x = buf.getChannelData(0);
+    let p0 = 0, p1 = 0, p2 = 0;
+    for (let i = 0; i < n; i++) {
+      const t = i / sr, u = (i / (n - 1)) * (m - 1), k = Math.min(m - 2, Math.floor(u)), w = u - k;
+      const f0 = freqs[k] * (1 - w) + freqs[k + 1] * w;
+      p0 += 2 * Math.PI * f0 / sr; p1 += 4 * Math.PI * f0 / sr; p2 += 6 * Math.PI * f0 / sr;
+      let env = 1;
+      if (t < 0.08) env = Math.sin((t / 0.08) * (Math.PI / 2));
+      else if (t > duration - 0.12) env = Math.cos(((t - (duration - 0.12)) / 0.12) * (Math.PI / 2));
+      x[i] = (Math.sin(p0) + Math.sin(p1) * harmonicRatio * 0.45 + Math.sin(p2) * harmonicRatio * 0.18) * env * 0.65;
+    }
+    this.currentBuffer = buf;
+    this.duration = duration;
+    return buf;
+  }
+
+  /**
    * Plays the generated audio buffer
    */
   play(startOffset = 0) {

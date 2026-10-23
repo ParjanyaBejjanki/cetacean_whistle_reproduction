@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#04101c" />
-  <meta name="description" content="A reproduction of VAE-GMM, a generative model that learns the shapes of false killer whale whistles well enough to imagine new ones." />
+  <meta name="description" content="Can a machine learn the shape of a whistle, well enough to whistle back? A reproduction of VAE-GMM, trained on false killer whale whistles." />
   <title>Learning the shape of a whistle — a VAE-GMM reproduction</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='4' fill='%23a9cfe0'/%3E%3C/svg%3E" />
   <link rel="preload" href="fonts/cormorant-garamond.woff2" as="font" type="font/woff2" crossorigin />
@@ -13,8 +13,8 @@
   <link rel="stylesheet" href="styles.css" />
   <!-- Footage: Pixabay 244188 (Pixabay Content License) and Pexels 5743314,
        Daniel Torobekov (Pexels License); full sources and terms are in
-       CREDITS.md. Sound: one illustrative tone, generated in the browser on
-       request; it is not model output. -->
+       CREDITS.md. Sound in the film: one illustrative tone, generated in the
+       browser on request; it is not model output. -->
 </head>
 <body>
   <!-- The water: fixed, one camera. Shot planes are built from shots.js. -->
@@ -29,9 +29,9 @@
   <header class="bar">
     <a class="mark" href="#ocean" data-stop="ocean">Whistle VAE-GMM</a>
     <nav class="index" aria-label="Sections">
-      <a href="#signal" data-stop="signal">Signal</a>
-      <a href="#model" data-stop="model">Model</a>
-      <a href="#generate" data-stop="generate">Generate</a>
+      <a href="#signal" data-stop="signal">Listen</a>
+      <a href="#model" data-stop="model">Learn</a>
+      <a href="#generate" data-stop="generate">Imagine</a>
       <a href="#try" data-stop="try">Try it</a>
     </nav>
   </header>
@@ -42,33 +42,38 @@
     <section class="sec" id="ocean" tabindex="-1" style="--s:1.6">
       <div class="block block-low" data-t="hero">
         <h1>Light fades first.<br /><i>The voices don’t.</i></h1>
-        <p class="lede">A reproduction of VAE-GMM — a model that learns the shapes of false killer whale whistles well enough to imagine new ones.</p>
-        <p class="cue" aria-hidden="true">Scroll ↓</p>
+        <p class="lede">Can a machine learn the shape of a whistle — well enough to whistle back?</p>
+        <p class="cue" aria-hidden="true">Scroll to listen ↓</p>
+      </div>
+      <div class="block block-low" data-t="dive">
+        <h2>Down here, sight runs out.<br /><i>Sound keeps going.</i></h2>
+        <p class="body">In water, sound travels four times faster than in air, and much farther than light ever reaches.</p>
       </div>
     </section>
 
     <section class="sec" id="listen" style="--s:1.8">
       <div class="block block-low" data-t="listen">
         <h2>Out here,<br /><i>a name is a sound.</i></h2>
-        <p class="body">In bottlenose dolphins, a learned signature whistle works like a name. This model learned from 180,154 whistle contours of false killer whales, recorded off Hawai‘i in 2017.</p>
+        <p class="body">Some dolphins answer to a whistle of their own. So we asked: could a machine learn the shapes of their whistles?</p>
       </div>
     </section>
 
-    <section class="sec" id="research" style="--s:3.1">
+    <!-- Listen → Learn → Imagine: one 3D scene on #sig (scene.js), explained in plain words. -->
+    <section class="sec" id="research" style="--s:4">
       <div class="block block-top" id="signal" tabindex="-1" data-t="signal">
-        <p class="step">01 · Signal</p>
-        <h2>Hold a whistle still,<br /><i>and it becomes a line.</i></h2>
-        <p class="body">Pressure over time turns into pitch over time — a frequency contour.</p>
+        <p class="step">01 · Listen</p>
+        <h2>Slow a whistle down,<br /><i>and you can see it.</i></h2>
+        <p class="body">Spread a recording out over time and pitch, and every whistle rises out of the noise like a ridge. Look at it from above, and it becomes a single line: the whistle’s shape.</p>
       </div>
       <div class="block block-top" id="model" tabindex="-1" data-t="model">
-        <p class="step">02 · Model</p>
-        <h2>Many calls.<br /><i>A handful of shapes.</i></h2>
-        <p class="body">A <span class="term">variational autoencoder</span> compresses each contour into a point in latent space. A <span class="term">Gaussian mixture</span> finds the clusters.</p>
+        <p class="step">02 · Learn</p>
+        <h2>Thousands of whistles.<br /><i>A few families of shape.</i></h2>
+        <p class="body">The machine studied 180,000 whistles of false killer whales and gave each one a place on a map. Whistles that look alike end up side by side, gathering into islands.</p>
       </div>
       <div class="block block-top" id="generate" tabindex="-1" data-t="generate">
-        <p class="step">03 · Generate</p>
-        <h2>Learn the shape well enough,<br /><i>and a new call can be imagined.</i></h2>
-        <p class="body">Pick a cluster, decode a contour, synthesise the sound.</p>
+        <p class="step">03 · Imagine</p>
+        <h2>Pick a spot on an island,<br /><i>and a new whistle appears.</i></h2>
+        <p class="body">Unfold that spot back into a shape, then into sound: a whistle no animal has made, in the style of the ones that have.</p>
         <div class="hear-row">
           <button id="btn-listen" class="hear" type="button" aria-pressed="false" aria-describedby="listen-note">
             <span class="ring"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17" /><circle class="fill" cx="20" cy="20" r="17" /><path class="p" d="M17 13l10 7-10 7z" /><path class="s" d="M15.5 13h3.4v14h-3.4zM21.6 13h3.4v14h-3.4z" /></svg></span>
@@ -82,20 +87,31 @@
     <section class="sec" id="return" style="--s:1.4">
       <div class="block block-low" data-t="coda">
         <h2>Same water,<br /><i>heard differently.</i></h2>
-        <p class="cite">Reproduction of Park et al., “A Generative Model for Cetacean Whistles Using Variational Autoencoder and Mixture of Gaussians,” <i>IEEE Access</i> 14 (2026).<br />Recordings: NOAA DCLDE 2022 (HICEAS 2017). Footage: LisaOlivia (Pixabay), Daniel Torobekov (Pexels).</p>
+        <p class="body">Now it’s your turn. Bring a recording, or borrow one of ours.</p>
+        <p class="cue" aria-hidden="true">Keep going ↓</p>
       </div>
     </section>
   </main>
 
-  <!-- 04 · Try it: an ordinary page after the film (lab.js). Live analysis needs `python whistle.py serve`;
+  <!-- 04 · Try it: an ordinary page after the film (lab.js). Its top edge is a long gradient that sinks the film into
+       the same water; a whistle line draws itself across as it arrives. Live analysis needs `python whistle.py serve`;
        on a static host it shows the examples analysed in advance (python whistle.py export-web). -->
   <section class="lab" id="try" tabindex="-1" aria-labelledby="try-title">
-    <p class="step">04 · Try it</p>
-    <h2 id="try-title">Bring a whistle.<br /><i>Hear what the model makes of it.</i></h2>
-    <p class="body lab-lede">Upload a hydrophone recording. Every whistle in it is found, the model recreates it and draws new ones of the same type, and each image is turned back into sound.</p>
-    <p class="lab-status" id="lab-status" role="status">Checking the model…</p>
+    <svg class="lab-wave" id="lab-wave" viewBox="0 0 1000 200" preserveAspectRatio="none" aria-hidden="true"><path class="glow" pathLength="1" /><path class="line" pathLength="1" /></svg>
+    <div class="lab-head">
+      <p class="step">04 · Your turn</p>
+      <h2 id="try-title">Bring a whistle.<br /><i>Hear what the machine makes of it.</i></h2>
+      <p class="body lab-lede">Start with a real recording from the study, or drop in your own. Every whistle in it is found, redrawn by the model, and played back to you.</p>
+      <div class="lab-status" id="lab-status" role="status"><span class="dot"></span><span class="txt">Checking the model…</span></div>
+    </div>
+
+    <div class="examples" id="examples" hidden>
+      <p class="ex-h">Real recordings</p>
+      <div class="ex-row" id="ex-row"></div>
+    </div>
 
     <div class="lab-input">
+      <p class="ex-h">Or bring your own</p>
       <label class="drop" id="drop">
         <input type="file" id="file" accept=".wav,.flac,.ogg,.mp3,audio/*" />
         <span class="drop-t" id="drop-t">Drop a recording here, or <u>choose a file</u></span>
@@ -106,32 +122,32 @@
         <label>New whistles per whistle <input type="number" id="nsamples" min="0" max="8" value="4" /></label>
         <button class="btn" id="run" type="button" disabled>Analyse</button>
       </div>
-      <div class="examples" id="examples" hidden><span class="lbl">Or try a recording from the dataset</span></div>
     </div>
     <div class="job" id="job" hidden><span></span><b><i></i></b></div>
 
     <div class="results" id="results" hidden>
       <p class="sum" id="sum"></p>
-      <div class="ov-wrap">
+      <div class="ov-card">
         <div class="ov-f" aria-hidden="true"></div>
-        <div class="ov" id="ov"><img id="ov-img" alt="" /><svg id="ov-svg" preserveAspectRatio="none"></svg></div>
+        <div class="ov" id="ov"><canvas id="ov-img"></canvas><svg id="ov-svg" preserveAspectRatio="none"></svg></div>
         <div class="ov-t" id="ov-t" aria-hidden="true"></div>
       </div>
+      <p class="ov-hint">Each box is one whistle. Click one to hear it.</p>
       <div class="split">
-        <div class="wlist"><table id="wtable"><thead><tr><th>#</th><th>start</th><th>length</th><th>centre</th><th>range</th><th>type</th></tr></thead><tbody></tbody></table></div>
+        <div class="wlist"><table id="wtable"><thead><tr><th>#</th><th>start</th><th>length</th><th>centre</th><th>range</th><th>family</th></tr></thead><tbody></tbody></table></div>
         <div class="detail" id="detail" aria-live="polite"></div>
       </div>
     </div>
 
     <div class="gen" id="gen">
-      <h3>Generate without a recording</h3>
-      <p class="body">Draw new whistles straight from the Gaussian mixture, or only those meeting one of the paper's 13 conditions (Table 3).</p>
+      <h3>Imagine new whistles</h3>
+      <p class="body">No recording needed: the model draws brand-new whistles from what it learned. Choose how many, and if you like, ask for a certain kind.</p>
       <div class="lab-opts">
         <label>How many <input type="number" id="gen-n" min="1" max="16" value="8" /></label>
-        <label>Condition <select id="gen-cond"><option value="">none</option></select></label>
+        <label>Kind <select id="gen-cond"><option value="">any</option></select></label>
         <label>Centre pitch (Hz) <input type="number" id="gen-fc" min="2000" max="24000" step="100" placeholder="auto" title="Empty: each whistle gets a centre pitch drawn from the training whistles" /></label>
         <label>Seed <input type="number" id="gen-seed" min="0" value="0" /></label>
-        <button class="btn" id="gen-run" type="button" disabled>Generate</button>
+        <button class="btn" id="gen-run" type="button" disabled>Imagine</button>
       </div>
       <div class="job" id="gen-job" hidden><span></span><b><i></i></b></div>
       <p class="lab-note" id="gen-note"></p>
@@ -140,11 +156,11 @@
 
     <footer class="lab-foot">
       <p>Reproduction of Park et al., “A Generative Model for Cetacean Whistles Using Variational Autoencoder and Mixture of Gaussians,” <i>IEEE Access</i> 14 (2026), pp. 27877–27894. Recordings: NOAA DCLDE 2022 (HICEAS 2017), false killer whales. Footage: LisaOlivia (Pixabay), Daniel Torobekov (Pexels).</p>
-      <p>Every image is a 0.68 s, ±6 kHz picture of one contour with its centre pitch removed; the sound is a pure tone that follows it (the paper's Fig. 2 chain), placed back at the whistle's own centre pitch. Real whistles also carry harmonics, loudness changes and noise; the model does not.</p>
+      <p>Every image is a 0.68 s, ±6 kHz picture of one whistle’s shape with its centre pitch removed; the sound is a pure tone that follows it (the paper’s Fig. 2), placed back at the whistle’s own centre pitch. Real whistles also carry harmonics, loudness changes and noise; the model does not.</p>
     </footer>
   </section>
 
   <div class="progress" aria-hidden="true"><b id="progress-bar"></b></div>
-  <script src="audio-engine.js"></script><script src="shots.js"></script><script src="app.js"></script><script src="lab.js"></script>
+  <script src="audio-engine.js"></script><script src="shots.js"></script><script src="scene.js"></script><script src="app.js"></script><script src="lab.js"></script>
 </body>
 </html>

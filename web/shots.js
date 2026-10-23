@@ -63,25 +63,28 @@ window.SHADE = [
   [2.95, 0.6], [3.15, 0.08], [9, 0.08]
 ];
 
-/** Text blocks: [in0, in1, out0, out1] in pos. */
+/** Text blocks: [in0, in1, out0, out1] in pos. "dive" fills the crossing from the whale to the dolphins, where the
+    water is at its darkest. */
 window.TEXT = {
   hero: [-1, -1, 0.4, 0.54],
+  dive: [0.62, 0.72, 1.02, 1.12],
   listen: [1.6, 1.7, 1.9, 1.98],
-  signal: [1.98, 2.04, 2.2, 2.25],
-  model: [2.25, 2.3, 2.42, 2.47],
-  generate: [2.47, 2.52, 2.66, 2.71],
+  signal: [1.98, 2.04, 2.26, 2.31],
+  model: [2.31, 2.36, 2.52, 2.57],
+  generate: [2.57, 2.62, 2.76, 2.81],
   coda: [3.2, 3.5, 99, 99]
 };
 
-/** Research visual, keyed to the same beats. */
+/** The 3D scene (scene.js), keyed to the same beats. Each phase runs 0 -> 1 over its range. */
 window.VIZ = {
-  on: [1.92, 2.0, 2.7, 2.8],   // instrument visible
-  draw: [1.98, 2.08],          // waveform draws in
-  pitch: [2.1, 2.19],          // pressure → pitch contour
-  appear: [2.25, 2.3],         // the other contours arrive
-  latent: [2.3, 2.39],         // contours collapse to latent points
-  decode: [2.5, 2.58]          // one cluster decodes to a new call
+  on: [1.92, 2.0, 2.79, 2.87],  // scene visible
+  rise: [1.98, 2.07],           // Listen: the sound landscape rises, the whistle a ridge across it
+  tip: [2.12, 2.25],            //   the camera tips over until it looks straight down: the ridge becomes a line
+  crowd: [2.3, 2.37],           // Learn: other whistles appear around it
+  gather: [2.38, 2.5],          //   each folds into a point; look-alikes drift together into islands
+  dive: [2.56, 2.64],           // Imagine: the camera sinks into one island; a new point appears
+  unfold: [2.64, 2.73]          //   it unfolds into a new whistle (the one "Hear it" plays)
 };
 
 /** Where the index links land (pos). */
-window.STOPS = { ocean: 0, signal: 2.1, model: 2.36, generate: 2.58 };
+window.STOPS = { ocean: 0, signal: 2.1, model: 2.47, generate: 2.75 };
