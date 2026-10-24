@@ -108,11 +108,13 @@ class Film {
     this.labTop = lab ? lab.getBoundingClientRect().top + sy : Infinity;
     const d = Math.min(2, devicePixelRatio || 1);
     this.cv.width = this.W * d; this.cv.height = this.H * d; this.cx.setTransform(d, 0, 0, d, 0, 0);
-    // The instrument sits right of the research column, clear of the index.
-    const col = $('.block-top'), gut = this.W * .075;
-    const colRight = col ? gut + Math.min(col.offsetWidth || this.W * .34, this.W * .34) : this.W * .42;
-    const x0 = Math.max(this.W * .47, colRight + 72);
-    if (this.scene) this.scene.resize(this.W, this.H, { x0, x1: this.W - gut, y0: this.H * .2, y1: this.H * .8 });
+    // The scene has the whole screen; the research words keep their column, and the scene thins out behind them.
+    const gut = this.W * .075, cols = [...document.querySelectorAll('.block-top')].map(e => {
+      const r = e.getBoundingClientRect(); return { x0: r.left, y0: r.top, x1: r.left + Math.max(e.offsetWidth, e.scrollWidth), y1: r.bottom };
+    });
+    const text = cols.length ? { x0: Math.min(...cols.map(r => r.x0)), y0: Math.min(...cols.map(r => r.y0)),
+                                 x1: Math.max(...cols.map(r => r.x1)), y1: Math.max(...cols.map(r => r.y1)) } : null;
+    if (this.scene) this.scene.resize(this.W, this.H, { x0: gut, x1: this.W - gut, y0: this.H * .13, y1: this.H * .95 }, text);
     this.dirty = true;
   }
   span(i) { return i < this.secs.length - 1 ? this.h[i] : Math.max(1, this.h[i] - this.vh); }

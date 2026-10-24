@@ -1,6 +1,7 @@
 /**
  * Listen → Learn → Imagine as one 3D scene on the #sig canvas: canvas 2D with its own perspective projection, no
- * library. Like the rest of the film, every frame is a pure function of the scroll position (timings: shots.js VIZ),
+ * library. It has the whole screen: the research words keep their column on the left, and the scene thins out behind
+ * them (shade) while its labels keep clear of them. Like the rest of the film, every frame is a pure function of the scroll position (timings: shots.js VIZ),
  * and one camera moves continuously through all of it: nothing cuts. Hand-made to show the idea, not the trained
  * model's output; the note beside "Hear it" says so.
  *
@@ -73,6 +74,17 @@
       }
       this.clicks = [0.18, 0.47, 0.83].map(u => -1.3 + 2.6 * u);   // a few broadband clicks, as in real recordings
       this.H = this.heights();
+      // where each row rises enough to hide what is behind it (the whistle): only there does it need a fill; the floor
+      // and the clicks stay open wireframe
+      this.runs = this.H.map(row => {
+        const out = []; let a = -1;
+        row.forEach((h, j) => {
+          if (h > 0.13) { if (a < 0) a = Math.max(0, j - 3); }
+          else if (a >= 0 && row.slice(j, j + 3).every(v => v <= 0.13)) { out.push([a, Math.min(row.length - 1, j + 3)]); a = -1; }
+        });
+        if (a >= 0) out.push([a, row.length - 1]);
+        return out;
+      });
       // every whistle: from outside the mind (out) to a first place inside (p0), then to its family (p1)
       const gauss = () => (r() + r() + r() - 1.5) * 0.9, dir = () => { const a = r() * 6.2832, e = Math.acos(2 * r() - 1); return [Math.sin(e) * Math.cos(a), Math.cos(e), Math.sin(e) * Math.sin(a)]; };
       this.members = [];
@@ -99,7 +111,10 @@
         .sort((a, b) => Math.hypot(...a[1].p1.map((c, k) => c - ISLANDS[0][k])) - Math.hypot(...b[1].p1.map((c, k) => c - ISLANDS[0][k]))).slice(0, 3);
       this.parents = fam0.map(([i]) => i);
       this.Q = [0, 1, 2].map(k => fam0.reduce((s, [, m]) => s + m.p1[k], 0) / 3 + [0.05, -0.04, 0.03][k]);
-      this.dust = Array.from({ length: 170 }, () => { const d = dir(), rr = Math.cbrt(r()) * RM * 1.02; return [d[0] * rr, d[1] * rr, d[2] * rr, r()]; });
+      this.dust = Array.from({ length: 240 }, () => { const d = dir(), rr = Math.cbrt(r()) * RM * 1.02; return [d[0] * rr, d[1] * rr, d[2] * rr, r()]; });
+      // and fainter drift all around it, out to the edges of the screen
+      this.field = Array.from({ length: 320 }, () => { const d = dir(), rr = RM * (1.15 + 2.2 * r()); return [d[0] * rr * 1.6, d[1] * rr, d[2] * rr, r()]; });
+      this.labels = [];
       this.N = 64;                                        // points per drawn contour
     }
 
@@ -119,10 +134,22 @@
       return out;
     }
 
-    resize(W, H, box) {
-      this.W = W; this.Hpx = H; this.box = box;
-      this.ox = (box.x0 + box.x1) / 2; this.oy = (box.y0 + box.y1) / 2;
-      this.S = Math.min((box.x1 - box.x0) / 2.75, (box.y1 - box.y0) / 1.45);
+    resize(W, H, box, text) {
+      this.W = W; this.Hpx = H; this.box = box; this.text = text;
+      this.S = Math.min((box.x1 - box.x0) / 2.9, (box.y1 - box.y0) / 1.5);
+      this.ox = box.x0 + (box.x1 - box.x0) * 0.58; this.oy = box.y0 + (box.y1 - box.y0) * 0.52;
+      this.u = clamp(this.S / 300, 1, 2.4);                // points, pulses and strokes grow with the scene
+      this.lw = Math.sqrt(this.u);
+      this.shadeImg = null;
+      if (text) {                                         // a soft oval behind the words, drawn once
+        const w = text.x1 - text.x0, h = text.y1 - text.y0, c = document.createElement('canvas'), g = c.getContext('2d');
+        const pw = Math.round(w * 2.1), ph = Math.round(h * 2.1);
+        c.width = pw; c.height = ph; g.translate(pw / 2, ph / 2); g.scale(1, ph / pw);
+        const gr = g.createRadialGradient(0, 0, 0, 0, 0, pw / 2);
+        gr.addColorStop(0, 'rgba(0,0,0,0.82)'); gr.addColorStop(0.5, 'rgba(0,0,0,0.7)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+        g.fillStyle = gr; g.fillRect(-pw / 2, -pw / 2, pw, pw);
+        this.shadeImg = c; this.shadeAt = [text.x0 + w * 0.42 - pw / 2, text.y0 + h * 0.45 - ph / 2];
+      }
       this.fs = Math.round(clamp(W * 0.0084, 13, 19));
     }
 
@@ -130,10 +157,10 @@
     newWhistleHz(n) { return Array.from({ length: n }, (_, i) => 9200 + 2600 * FAMILIES[NEW.f](i / (n - 1), NEW.v)); }
 
     /* ------------------------------------------------------------------ one camera for the whole scene */
-    camA(tip) { return { yaw: lerp(-0.34, 0, tip), pitch: lerp(0.44, Math.PI / 2, tip), dist: lerp(3.05, 2.7, tip), t: [0, 0, 0] }; }
+    camA(tip) { return { yaw: lerp(-0.34, 0, tip), pitch: lerp(0.44, Math.PI / 2, tip), dist: lerp(3.25, 2.85, tip), t: [0, 0, 0] }; }
     camMind(g, d) {
       return { yaw: lerp(-0.42, 0.36, g) + 0.34 * d, pitch: lerp(0.3, 0.2, g) - 0.05 * d,
-               dist: lerp(lerp(3.55, 3.3, g), 1.55, d), t: lerp3([0, 0, 0], this.Q, d) };
+               dist: lerp(lerp(4.1, 3.8, g), 1.55, d), t: lerp3([0, 0, 0], this.Q, d) };
     }
     camera(P) {
       if (P.crowd <= 0) return this.camA(P.tip);
@@ -158,14 +185,24 @@
       path(); cx.strokeStyle = `rgba(${rgb},${0.96 * alpha})`; cx.lineWidth = width; cx.stroke();
     }
 
-    label(cx, text, x, y, alpha, align = 'left') {
-      if (alpha < 0.02) return;
+    label(cx, text, x, y, alpha, align = 'left') { if (alpha >= 0.02) this.labels.push([text, x, y, alpha, align]); }
+    flushLabels(cx) {
+      const t = this.text;
+      for (let [text, x, y, alpha, align] of this.labels) {
+        const w = cx.measureText(text).width, l = align === 'right' ? x - w : align === 'center' ? x - w / 2 : x;
+        // a label that would sit on the words moves out to their right
+        if (t && y > t.y0 - 12 && y < t.y1 + this.fs + 12 && l < t.x1 + 16 && l + w > t.x0) { x = t.x1 + 28; align = 'left'; }
+        this.drawLabel(cx, text, x, y, alpha, align);
+      }
+      this.labels.length = 0;
+    }
+    drawLabel(cx, text, x, y, alpha, align) {
       // a soft dark halo keeps the words readable over lines and glows
       cx.textAlign = align; cx.lineWidth = 4; cx.strokeStyle = `rgba(4,22,40,${0.55 * alpha})`; cx.strokeText(text, x, y);
       cx.fillStyle = `rgba(226,242,248,${0.95 * alpha})`; cx.fillText(text, x, y);
     }
 
-    glowDot(cx, x, y, r, alpha, rgb = INK) { blit(cx, spr(rgb, 'dot'), x, y, r * 4, alpha); }
+    glowDot(cx, x, y, r, alpha, rgb = INK) { blit(cx, spr(rgb, 'dot'), x, y, r * 4 * this.u, alpha); }
 
     /* the followed whistle as a line facing the viewer: centre c (world), scale s (1 = as on the landscape) */
     billboard(c, shape, s, cam) {
@@ -191,10 +228,13 @@
         }
         const near = 1 - i / (R - 1);
         if (hs > 0.001) {                                 // haze: far rows lighter, near rows the deep water
-          cx.beginPath(); cx.moveTo(top[0][0], top[0][1]);
-          for (let j = 1; j < C; j++) cx.lineTo(top[j][0], top[j][1]);
-          for (let j = C - 1; j >= 0; j--) cx.lineTo(base[j][0], base[j][1]);
-          cx.closePath();
+          cx.beginPath();                                 // only where the row rises: a flat floor hides nothing
+          for (const [j0, j1] of this.runs[i]) {
+            cx.moveTo(top[j0][0], top[j0][1]);
+            for (let j = j0 + 1; j <= j1; j++) cx.lineTo(top[j][0], top[j][1]);
+            for (let j = j1; j >= j0; j--) cx.lineTo(base[j][0], base[j][1]);
+            cx.closePath();
+          }
           cx.fillStyle = `rgba(${Math.round(lerp(12, 3, near))},${Math.round(lerp(50, 20, near))},${Math.round(lerp(84, 38, near))},${0.9 * A * rise * keep})`;
           cx.fill();
         }
@@ -253,11 +293,11 @@
       }
       // drifting particles: depth in the dark
       const dustA = mind * (1 - 0.5 * d) * sm(0.5, 1, crowd);   // drifts in once the sheet has gone
-      if (dustA > 0.01) for (const [b, lo] of [[0.12, 0], [0.24, 0.34], [0.4, 0.67]]) {
-        cx.fillStyle = `rgba(${PALE},${b * dustA})`;
-        for (const q of this.dust) {                       // plain rectangles: the GPU's cheapest fill
+      if (dustA > 0.01) for (const [set, f] of [[this.dust, 1], [this.field, 0.55]]) for (const [b, lo] of [[0.12, 0], [0.24, 0.34], [0.4, 0.67]]) {
+        cx.fillStyle = `rgba(${PALE},${b * f * dustA})`;
+        for (const q of set) {                             // plain rectangles: the GPU's cheapest fill
           if (q[3] < lo || q[3] >= lo + 0.34) continue;
-          const p = this.proj(q[0], q[1], q[2], cam), rr = clamp(0.5 + 0.6 * p[2], 0.5, 2.2);
+          const p = this.proj(q[0], q[1], q[2], cam), rr = clamp((0.5 + 0.6 * p[2]) * this.lw, 0.5, 3);
           cx.fillRect(p[0] - rr / 2, p[1] - rr / 2, rr, rr);
         }
       }
@@ -292,7 +332,7 @@
           if (pa > 0.01) for (const e of this.edges) {
             if (e.f !== f) continue;
             const a = scr[e.a], b = scr[e.b], t = (P.pos * 24 + e.seed) % 1;
-            blit(cx, img, lerp(a[0], b[0], t), lerp(a[1], b[1], t), 6.5, pa);
+            blit(cx, img, lerp(a[0], b[0], t), lerp(a[1], b[1], t), 6.5 * this.u, pa);
           }
         }
       }
@@ -309,9 +349,9 @@
         if (fold > 0.02) {
           const L = 0.34 * this.S * k * fold, Hh = 0.11 * this.S * k * fold, pts = [];
           for (let j = 0; j < this.N; j += 3) { const uu = j / (this.N - 1); pts.push([s[0] + (uu - 0.5) * L, s[1] - FAMILIES[m.f](uu, m.v) * Hh]); }
-          this.line(cx, pts, a * 0.8, 1.1, false, HUES[m.f]);
+          this.line(cx, pts, a * 0.8, 1.1 * this.lw, false, HUES[m.f]);
         }
-        if (pointA > 0.01) blit(cx, spr(HUES[m.f], 'dot'), s[0], s[1], 4 * (1.3 + 1.5 * k), a * pointA);
+        if (pointA > 0.01) blit(cx, spr(HUES[m.f], 'dot'), s[0], s[1], 4 * this.u * (1.3 + 1.5 * k), a * pointA);
       }
       // plain-language labels
       const top = this.proj(0, RM * 1.12, 0, cam), isl = this.proj(ISLANDS[0][0], ISLANDS[0][1], ISLANDS[0][2], cam);
@@ -327,11 +367,11 @@
     drawMain(cx, cam, A, P) {
       if (P.crowd <= 0) {
         const pts = this.ridge(cam, P.rise, P.tip);
-        this.line(cx, pts, A * P.rise, 1.9);
+        this.line(cx, pts, A * P.rise, 1.9 * this.lw);
         return pts;
       }
       const c = this.mainPos(P), s = 1 - sm(0.35, 0.95, P.crowd), [x, y, k] = this.proj(c[0], c[1], c[2], cam);
-      if (s > 0.01) this.line(cx, this.billboard(c, MAIN, s, cam), A, lerp(1.1, 1.9, s));
+      if (s > 0.01) this.line(cx, this.billboard(c, MAIN, s, cam), A, lerp(1.1, 1.9, s) * this.lw);
       const pa = A * sm(0.65, 1, P.crowd) * (1 - sm(0, 0.6, P.unfold));
       this.glowDot(cx, x, y, 2.4 + 1.6 * Math.min(k, 1.6), pa);
       return null;
@@ -349,16 +389,18 @@
         cx.lineWidth = 1.2; cx.strokeStyle = `rgba(${SUN},${0.5 * A * born * (1 - u)})`; cx.stroke(w);
       }
       for (let i = 0; i < 3; i++) {                         // rings spreading out from the new point
-        const rr = sm(0.4, 1, d) * (18 + 26 * i) * k * (1 - u * 0.5);
+        const rr = sm(0.4, 1, d) * (18 + 26 * i) * k * this.u * (1 - u * 0.5);
         if (rr > 1) { cx.strokeStyle = `rgba(${SUN},${A * 0.5 * (1 - i / 3) * (1 - u)})`; cx.lineWidth = 1;
                       cx.beginPath(); cx.arc(x, y, rr, 0, 6.2832); cx.stroke(); }
       }
-      blit(cx, spr(SUN, 'glow'), x, y, 46 * born * k, 0.35 * A * born * (1 - u));
+      blit(cx, spr(SUN, 'glow'), x, y, 46 * born * k * this.u, 0.35 * A * born * (1 - u));
       this.glowDot(cx, x, y, 3.2 * born + 1, A * born * (1 - sm(0.2, 0.8, u)), SUN);
       this.label(cx, 'a new place, among whistles it knows…', x + 28, y - 24, A * sm(0.35, 0.7, d) * (1 - sm(0.2, 0.5, u)));
       if (u <= 0.001) return;
-      const b = this.box, X0 = b.x0 + 0.05 * (b.x1 - b.x0), X1 = b.x1 - 0.02 * (b.x1 - b.x0);
-      const Y = (b.y0 + b.y1) / 2 + 0.04 * (b.y1 - b.y0), Hh = 0.27 * (b.y1 - b.y0), f = FAMILIES[NEW.f], pts = [];
+      // it unrolls across the whole width of the screen, below the words: low on the left, rising to the right
+      const b = this.box, t = this.text, X0 = b.x0 + 14, X1 = b.x1;
+      const top = t ? t.y1 + 0.08 * this.Hpx : lerp(b.y0, b.y1, 0.4), bot = b.y1 - 0.06 * this.Hpx;
+      const Hh = bot - top, Y = top + 0.56 * Hh, f = FAMILIES[NEW.f], pts = [];   // its pitch spans about -0.4 .. 0.55
       for (let i = 0; i < this.N; i++) {                    // unrolls from the point, left to right
         const uu = i / (this.N - 1), e = smoother(clamp((u - uu * 0.35) / 0.65));
         pts.push([lerp(x, lerp(X0, X1, uu), e), lerp(y, Y - f(uu, NEW.v) * Hh, e)]);
@@ -366,17 +408,17 @@
       const fa = A * sm(0.55, 1, u) * 0.5;                   // a quiet frame: pitch up, time across
       if (fa > 0.01) {
         cx.strokeStyle = `rgba(${PALE},${fa * 0.5})`; cx.lineWidth = 1; cx.setLineDash([2, 6]);
-        cx.beginPath(); cx.moveTo(X0, Y + Hh * 1.15); cx.lineTo(X1, Y + Hh * 1.15); cx.moveTo(X0 - 14, Y - Hh * 1.1); cx.lineTo(X0 - 14, Y + Hh * 1.15); cx.stroke();
+        cx.beginPath(); cx.moveTo(X0, bot + 14); cx.lineTo(X1, bot + 14); cx.moveTo(X0 - 14, top - 6); cx.lineTo(X0 - 14, bot + 14); cx.stroke();
         cx.setLineDash([]);
-        this.label(cx, 'time →', X1, Y + Hh * 1.15 + 22, fa * 1.6, 'right');
-        this.label(cx, 'pitch ↑', X0 - 14, Y - Hh * 1.1 - 12, fa * 1.6);
+        this.label(cx, 'time →', X1, bot + 38, fa * 1.6, 'right');
+        this.label(cx, 'pitch ↑', X0 - 14, top - 18, fa * 1.6);
       }
-      this.line(cx, pts, A, 2.1, true, SUN);
-      this.label(cx, '…and rises as a new whistle', X1, Y - Hh * 1.1 - 12, A * sm(0.75, 1, u), 'right');
+      this.line(cx, pts, A, 2.1 * this.lw, true, SUN);
+      this.label(cx, '…and rises as a new whistle', X1, top - 18, A * sm(0.75, 1, u), 'right');
       if (P.playT != null && u > 0.5) {                      // playhead while "Hear it" plays
         const i = Math.round(P.playT * (this.N - 1)), px = pts[i][0];
         cx.strokeStyle = `rgba(${INK},${0.35 * A})`; cx.lineWidth = 1;
-        cx.beginPath(); cx.moveTo(px, Y - Hh * 1.1); cx.lineTo(px, Y + Hh * 1.15); cx.stroke();
+        cx.beginPath(); cx.moveTo(px, top - 6); cx.lineTo(px, bot + 14); cx.stroke();
         this.glowDot(cx, px, pts[i][1], 4, A, SUN);
       }
     }
@@ -406,6 +448,11 @@
         this.label(cx, 'pitch ↑', pl[0], pl[1], q);
         this.label(cx, 'its shape', ridge[this.N - 1][0] + 16, ridge[this.N - 1][1] + 5, q);
       }
+      if (this.shadeImg) {                                   // the scene thins out behind the words
+        cx.globalCompositeOperation = 'destination-out'; cx.drawImage(this.shadeImg, this.shadeAt[0], this.shadeAt[1]);
+        cx.globalCompositeOperation = 'source-over';
+      }
+      this.flushLabels(cx);
     }
   }
   window.ResearchScene = ResearchScene;
