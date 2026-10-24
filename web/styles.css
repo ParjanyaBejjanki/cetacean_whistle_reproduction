@@ -92,41 +92,44 @@ h2{font-size:clamp(2.9rem,4vw,6.4rem);line-height:.98}
 .hear:focus-visible{outline:1px solid var(--pale);outline-offset:6px;border-radius:24px}
 .note{font:400 clamp(12px,.55vw,14px) var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mist);opacity:.9}
 
-/* ---- 04 · Your turn: an ordinary page after the film, in the same water. Its top edge is a long gradient that sinks
-   the film (still visible through it) into this water; a whistle line draws itself across as it arrives (lab.js).
-   Light falls in shafts from above and fades with depth; marine snow drifts in it. All static: nothing here
-   repaints while scrolling. app.js parks the film once the page covers the screen. ---- */
-.lab{--sea0:#0b3a60;--sea1:#082d4e;--sea2:#06223d;--sea3:#041a2f;--sea4:#020e1b;
+/* ---- 04 · Dive in: an ordinary page after the film, in the same water. The film ends under a tide: layered swells
+   roll in over it (a canvas), the front crest a whistle that draws itself (lab.js setupTide). Below, the water itself
+   stays with the viewer (.sea-view is sticky): light falls in soft, swaying rays, the surface's shimmer plays near the
+   top, marine snow drifts at two depths, and a fine grain keeps the blues from banding; it dims as you go deeper.
+   app.js parks the film once the page covers the screen. ---- */
+.lab{--sea0:#0c3f66;--sea1:#093254;--sea2:#06243f;--sea3:#041a2f;--sea4:#020e1b;
   position:relative;z-index:3;min-height:100vh;padding:34vh var(--gutter) 10vh;font-family:var(--sans);
-  background:linear-gradient(var(--sea0) 0,var(--sea1) 45vh,var(--sea2) 120vh,var(--sea3) 220vh,var(--sea4) 100%)}
-/* the light: shafts from above and marine snow, on their own layer that fades in below the top edge, so the edge
-   matches the gradient above it exactly (no seam) */
-.lab::after{content:"";position:absolute;left:0;right:0;top:0;height:170vh;pointer-events:none;z-index:0;
-  -webkit-mask-image:linear-gradient(transparent,#000 26vh,#000 120vh,transparent);mask-image:linear-gradient(transparent,#000 26vh,#000 120vh,transparent);
-  background:
-    radial-gradient(58% 50vh at 16% 12vh,rgba(169,207,224,.2),transparent 72%),
-    radial-gradient(38% 40vh at 80% 14vh,rgba(169,207,224,.11),transparent 70%),
-    linear-gradient(104deg,transparent 14%,rgba(196,228,242,.075) 21%,transparent 29%) 0 0/100% 140vh no-repeat,
-    linear-gradient(97deg,transparent 43%,rgba(196,228,242,.06) 49%,transparent 56%) 0 0/100% 160vh no-repeat,
-    linear-gradient(111deg,transparent 64%,rgba(196,228,242,.05) 69%,transparent 75%) 0 0/100% 120vh no-repeat,
-    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cg fill='%23d6edf5'%3E%3Ccircle cx='169' cy='81' r='1.4' opacity='0.18'/%3E%3Ccircle cx='41' cy='278' r='0.7' opacity='0.32'/%3E%3Ccircle cx='302' cy='33' r='0.9' opacity='0.18'/%3E%3Ccircle cx='48' cy='226' r='1.4' opacity='0.18'/%3E%3Ccircle cx='127' cy='50' r='1.4' opacity='0.18'/%3E%3Ccircle cx='293' cy='67' r='0.9' opacity='0.18'/%3E%3Ccircle cx='299' cy='303' r='1.4' opacity='0.18'/%3E%3Ccircle cx='117' cy='27' r='0.9' opacity='0.32'/%3E%3Ccircle cx='218' cy='77' r='0.7' opacity='0.32'/%3E%3Ccircle cx='290' cy='353' r='0.9' opacity='0.18'/%3E%3Ccircle cx='301' cy='296' r='0.9' opacity='0.32'/%3E%3Ccircle cx='53' cy='284' r='0.7' opacity='0.18'/%3E%3Ccircle cx='320' cy='109' r='1.4' opacity='0.4'/%3E%3Ccircle cx='401' cy='164' r='1.4' opacity='0.4'/%3E%3Ccircle cx='189' cy='157' r='0.9' opacity='0.25'/%3E%3Ccircle cx='361' cy='403' r='0.9' opacity='0.18'/%3E%3Ccircle cx='298' cy='157' r='1.4' opacity='0.32'/%3E%3Ccircle cx='377' cy='233' r='1.1' opacity='0.18'/%3E%3Ccircle cx='64' cy='266' r='1.4' opacity='0.25'/%3E%3Ccircle cx='391' cy='179' r='0.9' opacity='0.4'/%3E%3Ccircle cx='219' cy='24' r='0.7' opacity='0.32'/%3E%3Ccircle cx='178' cy='359' r='1.1' opacity='0.4'/%3E%3C/g%3E%3C/svg%3E") 0 0/420px 420px}
+  background:linear-gradient(var(--sea0) 0,var(--sea1) 50vh,var(--sea2) 130vh,var(--sea3) 230vh,var(--sea4) 100%)}
 .lab>*{position:relative;z-index:1}
-.lab>.lab-wave{position:absolute}
+.lab>.sea,.lab>.tide,.lab>.tide-c{position:absolute}
 .lab::before{content:"";position:absolute;left:0;right:0;bottom:100%;height:95vh;pointer-events:none;
-  background:linear-gradient(rgba(11,58,96,0),rgba(11,58,96,.28) 40%,rgba(11,58,96,.72) 78%,var(--sea0))}
+  background:linear-gradient(rgba(12,63,102,0),rgba(9,44,74,.22) 45%,rgba(9,44,74,.5))}
+.sea{inset:0;z-index:0;pointer-events:none}
+/* the vignette and the grain are part of the view's own (static) background */
+.sea-view{position:sticky;top:0;height:100vh;overflow:hidden;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E %3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='7' stitchTiles='stitch'/%3E %3CfeColorMatrix values='0 0 0 0 .8 0 0 0 0 .9 0 0 0 0 1 0 0 0 .5 -.235'/%3E%3C/filter%3E %3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E") 0 0/220px 220px,radial-gradient(120% 95% at 50% -10%,transparent 50%,rgba(2,12,22,.5))}
+.sea-view>*{position:absolute}
+/* light, shimmer and snow: one canvas (lab.js setupSea), drawn at reduced resolution and stretched: soft light needs no
+   more, and the GPU composites one layer instead of a dozen. Without WebGL, a still shaft of light. */
+.sea-gl{inset:0;width:100%;height:100%}
+.sea-view.static{background-image:radial-gradient(60% 70% at 40% -5%,rgba(196,228,242,.16),transparent 70%),
+  radial-gradient(120% 95% at 50% -10%,transparent 50%,rgba(2,12,22,.5))}
+/* the tide (lab.js draws the swells on the canvas and the crest in the svg): 70vh above the page's top edge to 28vh
+   into it */
+.tide,.tide-c{left:0;top:-70vh;width:100%;height:98vh;pointer-events:none;z-index:1}
+.tide{overflow:visible}
+.tide .crest{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:0}
+.tide .glow{stroke:rgba(169,207,224,.22);stroke-width:12px}
+.tide .line{stroke:rgba(234,246,251,.92);stroke-width:1.8px}
+.lab.anim .tide .crest{stroke-dashoffset:1;transition:stroke-dashoffset 3.2s cubic-bezier(.5,0,.2,1)}
+.lab.anim.in .tide .crest{stroke-dashoffset:0}
 .lab:focus{outline:none}
 .lab [hidden]{display:none!important}
 .lab .results,.lab .gen,.lab #detail{scroll-margin-top:110px}
 /* over the page the index needs a solid band: content scrolls beneath it (app.js sets lab-on) */
 body.lab-on .bar{background:rgba(6,30,52,.94);padding-bottom:22px;box-shadow:0 1px 0 rgba(169,207,224,.12);transition:background .3s}
 
-/* the arrival: a whistle line draws itself across, the heading rises after it (lab.js adds .anim, then .in) */
-.lab-wave{position:absolute;left:0;top:7vh;width:100%;height:22vh;overflow:visible;pointer-events:none}
-.lab-wave path{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:1;stroke-dashoffset:0}
-.lab-wave .glow{stroke:rgba(169,207,224,.2);stroke-width:12px}
-.lab-wave .line{stroke:rgba(234,246,251,.92);stroke-width:1.8px}
-.lab.anim .lab-wave path{stroke-dashoffset:1;transition:stroke-dashoffset 2.8s cubic-bezier(.5,0,.2,1)}
-.lab.anim.in .lab-wave path{stroke-dashoffset:0}
+/* the arrival: the heading rises once the tide has come in (lab.js adds .anim, then .in) */
 .lab.anim .lab-head>*{opacity:0;transform:translateY(22px);transition:opacity 1.1s ease,transform 1.1s cubic-bezier(.2,.7,.2,1)}
 .lab.anim.in .lab-head>*{opacity:1;transform:none}
 .lab.anim.in .lab-head>:nth-child(2){transition-delay:.25s}
@@ -236,7 +239,7 @@ body.lab-on .bar{background:rgba(6,30,52,.94);padding-bottom:22px;box-shadow:0 1
 .gen-grid figcaption{font:400 11.5px/1.5 var(--mono);color:var(--mist)}
 .lab-foot{margin-top:14vh;padding-top:26px;border-top:1px solid rgba(169,207,224,.14);max-width:110ch}
 .lab-foot p{margin:0 0 12px;font:300 13.5px/1.7 var(--sans);color:var(--mist)}
-@media(prefers-reduced-motion:reduce){.job.busy i{animation:none;width:100%;opacity:.4}.lab.anim .lab-head>*,.lab.anim .lab-wave path{transition:none}}
+@media(prefers-reduced-motion:reduce){.job.busy i{animation:none;width:100%;opacity:.4}.lab.anim .lab-head>*,.lab.anim .tide .crest{transition:none}}
 
 .progress{position:fixed;z-index:5;left:0;right:0;bottom:0;height:1px;pointer-events:none}
 .progress b{position:absolute;inset:0;background:rgba(238,244,246,.4);transform:scaleX(0);transform-origin:left}

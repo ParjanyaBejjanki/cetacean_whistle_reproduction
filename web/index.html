@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#04101c" />
-  <meta name="description" content="Can a machine learn the shape of a whistle, well enough to whistle back? A reproduction of VAE-GMM, trained on false killer whale whistles." />
+  <meta name="description" content="Beneath the waves, the sea is never silent. Could a machine learn the shapes of dolphin whistles, well enough to whistle back? A reproduction of VAE-GMM, trained on false killer whale whistles." />
   <title>Learning the shape of a whistle — a VAE-GMM reproduction</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='4' fill='%23a9cfe0'/%3E%3C/svg%3E" />
   <link rel="preload" href="fonts/cormorant-garamond.woff2" as="font" type="font/woff2" crossorigin />
@@ -41,20 +41,20 @@
   <main id="film">
     <section class="sec" id="ocean" tabindex="-1" style="--s:1.6">
       <div class="block block-low" data-t="hero">
-        <h1>Light fades first.<br /><i>The voices don’t.</i></h1>
-        <p class="lede">Can a machine learn the shape of a whistle — well enough to whistle back?</p>
-        <p class="cue" aria-hidden="true">Scroll to listen ↓</p>
+        <h1>Beneath the waves,<br /><i>the sea is never silent.</i></h1>
+        <p class="lede">Whales and dolphins fill the deep with whistles. Could a machine learn their shapes — well enough to whistle back?</p>
+        <p class="cue" aria-hidden="true">Dive in ↓</p>
       </div>
       <div class="block block-low" data-t="dive">
-        <h2>Down here, sight runs out.<br /><i>Sound keeps going.</i></h2>
-        <p class="body">In water, sound travels four times faster than in air, and much farther than light ever reaches.</p>
+        <h2>Red fades first, then gold.<br /><i>Sound never fades.</i></h2>
+        <p class="body">A few metres down, the sea drinks the colours one by one. Sound keeps going: four times faster than in air, and farther than any light can reach.</p>
       </div>
     </section>
 
     <section class="sec" id="listen" style="--s:1.8">
       <div class="block block-low" data-t="listen">
-        <h2>Out here,<br /><i>a name is a sound.</i></h2>
-        <p class="body">Some dolphins answer to a whistle of their own. So we asked: could a machine learn the shapes of their whistles?</p>
+        <h2>In the open blue,<br /><i>a name is a whistle.</i></h2>
+        <p class="body">Some dolphins carry a whistle of their own and turn when they hear it. So we wondered: could a machine learn to hear these voices too?</p>
       </div>
     </section>
 
@@ -62,18 +62,18 @@
     <section class="sec" id="research" style="--s:4">
       <div class="block block-top" id="signal" tabindex="-1" data-t="signal">
         <p class="step">01 · Listen</p>
-        <h2>Slow a whistle down,<br /><i>and you can see it.</i></h2>
-        <p class="body">Spread a recording out over time and pitch, and every whistle rises out of the noise like a ridge. Look at it from above, and it becomes a single line: the whistle’s shape.</p>
+        <h2>Slow a whistle down,<br /><i>and it rises like a reef.</i></h2>
+        <p class="body">Spread a recording out over time and pitch, and every whistle rises out of the hiss of the sea like a ridge on the seafloor. Look down on it from above, and it becomes a single line: the whistle’s shape.</p>
       </div>
       <div class="block block-top" id="model" tabindex="-1" data-t="model">
         <p class="step">02 · Learn</p>
-        <h2>Thousands of whistles.<br /><i>A few families of shape.</i></h2>
-        <p class="body">The machine studied 180,000 whistles of false killer whales and gave each one a place on a map. Whistles that look alike end up side by side, gathering into islands.</p>
+        <h2>Thousands of voices.<br /><i>They swim together in schools.</i></h2>
+        <p class="body">The machine listened to 180,000 whistles of false killer whales and gave each one a place in its memory. Whistles that sound alike drift together, the way fish gather into schools.</p>
       </div>
       <div class="block block-top" id="generate" tabindex="-1" data-t="generate">
         <p class="step">03 · Imagine</p>
-        <h2>Pick a spot on an island,<br /><i>and a new whistle appears.</i></h2>
-        <p class="body">Unfold that spot back into a shape, then into sound: a whistle no animal has made, in the style of the ones that have.</p>
+        <h2>Swim between the schools,<br /><i>and a new voice surfaces.</i></h2>
+        <p class="body">Pick a place among whistles it knows, and the machine turns it back into a shape, then into sound: a whistle no animal has made, in the voice of the ones that have.</p>
         <div class="hear-row">
           <button id="btn-listen" class="hear" type="button" aria-pressed="false" aria-describedby="listen-note">
             <span class="ring"><svg viewBox="0 0 40 40" aria-hidden="true"><circle class="track" cx="20" cy="20" r="17" /><circle class="fill" cx="20" cy="20" r="17" /><path class="p" d="M17 13l10 7-10 7z" /><path class="s" d="M15.5 13h3.4v14h-3.4zM21.6 13h3.4v14h-3.4z" /></svg></span>
@@ -86,32 +86,39 @@
 
     <section class="sec" id="return" style="--s:1.4">
       <div class="block block-low" data-t="coda">
-        <h2>Same water,<br /><i>heard differently.</i></h2>
-        <p class="body">Now it’s your turn. Bring a recording, or borrow one of ours.</p>
-        <p class="cue" aria-hidden="true">Keep going ↓</p>
+        <h2>The sea hasn’t changed.<br /><i>Now you hear it differently.</i></h2>
+        <p class="body">Your turn to listen. Bring a recording from the deep, or borrow one of ours.</p>
+        <p class="cue" aria-hidden="true">Go deeper ↓</p>
       </div>
     </section>
   </main>
 
-  <!-- 04 · Try it: an ordinary page after the film (lab.js). Its top edge is a long gradient that sinks the film into
-       the same water; a whistle line draws itself across as it arrives. Live analysis needs `python whistle.py serve`;
+  <!-- 04 · Try it: an ordinary page after the film (lab.js). The film ends under a tide of layered swells whose front
+       crest is a whistle drawing itself; below it, the water itself (light rays, marine snow). Live analysis needs `python whistle.py serve`;
        on a static host it shows the examples analysed in advance (python whistle.py export-web). -->
   <section class="lab" id="try" tabindex="-1" aria-labelledby="try-title">
-    <svg class="lab-wave" id="lab-wave" viewBox="0 0 1000 200" preserveAspectRatio="none" aria-hidden="true"><path class="glow" pathLength="1" /><path class="line" pathLength="1" /></svg>
+    <!-- the water itself: light from above, the shimmer of the surface, drifting snow (one shader, lab.js setupSea);
+         it stays with the viewer and dims as you go deeper -->
+    <div class="sea" aria-hidden="true"><div class="sea-view" id="sea-view"><canvas class="sea-gl" id="sea-gl"></canvas></div></div>
+    <!-- the tide: layered swells roll in over the film as it ends; the front crest is a whistle that draws itself -->
+    <canvas class="tide-c" id="tide-c" aria-hidden="true"></canvas>
+    <svg class="tide" id="tide" preserveAspectRatio="none" aria-hidden="true">
+      <path class="crest glow" pathLength="1" /><path class="crest line" pathLength="1" />
+    </svg>
     <div class="lab-head">
-      <p class="step">04 · Your turn</p>
-      <h2 id="try-title">Bring a whistle.<br /><i>Hear what the machine makes of it.</i></h2>
-      <p class="body lab-lede">Start with a real recording from the study, or drop in your own. Every whistle in it is found, redrawn by the model, and played back to you.</p>
+      <p class="step">04 · Dive in</p>
+      <h2 id="try-title">Bring a voice from the deep.<br /><i>Hear what the machine makes of it.</i></h2>
+      <p class="body lab-lede">Start with a recording made off Hawai‘i, or drop in your own. The machine finds every whistle in it, redraws it, and plays it back to you.</p>
       <div class="lab-status" id="lab-status" role="status"><span class="dot"></span><span class="txt">Checking the model…</span></div>
     </div>
 
     <div class="examples" id="examples" hidden>
-      <p class="ex-h">Real recordings</p>
+      <p class="ex-h">Recorded off Hawai‘i</p>
       <div class="ex-row" id="ex-row"></div>
     </div>
 
     <div class="lab-input">
-      <p class="ex-h">Or bring your own</p>
+      <p class="ex-h">Or bring your own recording</p>
       <label class="drop" id="drop">
         <input type="file" id="file" accept=".wav,.flac,.ogg,.mp3,audio/*" />
         <span class="drop-t" id="drop-t">Drop a recording here, or <u>choose a file</u></span>
@@ -140,8 +147,8 @@
     </div>
 
     <div class="gen" id="gen">
-      <h3>Imagine new whistles</h3>
-      <p class="body">No recording needed: the model draws brand-new whistles from what it learned. Choose how many, and if you like, ask for a certain kind.</p>
+      <h3>Imagine new voices</h3>
+      <p class="body">No recording needed: the machine dreams up brand-new whistles from everything it has heard. Choose how many, and if you like, ask for a certain kind.</p>
       <div class="lab-opts">
         <label>How many <input type="number" id="gen-n" min="1" max="16" value="8" /></label>
         <label>Kind <select id="gen-cond"><option value="">any</option></select></label>

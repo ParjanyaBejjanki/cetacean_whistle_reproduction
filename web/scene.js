@@ -2,7 +2,7 @@
  * Listen → Learn → Imagine as one 3D scene on the #sig canvas: canvas 2D with its own perspective projection, no
  * library. Like the rest of the film, every frame is a pure function of the scroll position (timings: shots.js VIZ),
  * and one camera moves continuously through all of it: nothing cuts. Hand-made to show the idea, not the trained
- * model's output; the corner says so.
+ * model's output; the note beside "Hear it" says so.
  *
  *   rise, tip      A sound landscape (a wireframe mesh: time across, pitch into the distance, loudness up) with the
  *                  whistle as a glowing ridge. The camera tips over until it looks straight down: the ridge is now a
@@ -40,6 +40,7 @@
   const NEW = { f: 0, v: { a: 0.82, s: 0.95 } };          // the new whistle of the same family
   const RM = 1.15;                                       // radius of the mind
   const INK = '234,246,251', PALE = '169,207,224';
+  const SUN = '242,208,150';                             // the new whistle: a warm shaft of sunlight among the blue
 
   /* Round things (points, pulses, glows) are pre-rendered once and copied as images: on an integrated GPU, dozens
      of small vector circles and per-frame gradients cost several times more than the same pixels as image blits. */
@@ -122,7 +123,7 @@
       this.W = W; this.Hpx = H; this.box = box;
       this.ox = (box.x0 + box.x1) / 2; this.oy = (box.y0 + box.y1) / 2;
       this.S = Math.min((box.x1 - box.x0) / 2.75, (box.y1 - box.y0) / 1.45);
-      this.fs = Math.round(clamp(W * 0.0068, 12, 16));
+      this.fs = Math.round(clamp(W * 0.0084, 13, 19));
     }
 
     /** the new whistle as frequencies (Hz) for the audio engine: n points over its duration */
@@ -153,13 +154,15 @@
     line(cx, pts, alpha, width = 1.7, glow = true, rgb = INK) {
       if (alpha < 0.01 || pts.length < 2) return;
       const path = () => { cx.beginPath(); cx.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length; i++) cx.lineTo(pts[i][0], pts[i][1]); };
-      if (glow) { path(); cx.strokeStyle = `rgba(${PALE},${0.16 * alpha})`; cx.lineWidth = width * 4.5; cx.stroke(); }
+      if (glow) { path(); cx.strokeStyle = `rgba(${rgb === INK ? PALE : rgb},${0.16 * alpha})`; cx.lineWidth = width * 4.5; cx.stroke(); }
       path(); cx.strokeStyle = `rgba(${rgb},${0.96 * alpha})`; cx.lineWidth = width; cx.stroke();
     }
 
     label(cx, text, x, y, alpha, align = 'left') {
       if (alpha < 0.02) return;
-      cx.textAlign = align; cx.fillStyle = `rgba(214,236,244,${0.9 * alpha})`; cx.fillText(text, x, y);
+      // a soft dark halo keeps the words readable over lines and glows
+      cx.textAlign = align; cx.lineWidth = 4; cx.strokeStyle = `rgba(4,22,40,${0.55 * alpha})`; cx.strokeText(text, x, y);
+      cx.fillStyle = `rgba(226,242,248,${0.95 * alpha})`; cx.fillText(text, x, y);
     }
 
     glowDot(cx, x, y, r, alpha, rgb = INK) { blit(cx, spr(rgb, 'dot'), x, y, r * 4, alpha); }
@@ -312,9 +315,9 @@
       }
       // plain-language labels
       const top = this.proj(0, RM * 1.12, 0, cam), isl = this.proj(ISLANDS[0][0], ISLANDS[0][1], ISLANDS[0][2], cam);
-      this.label(cx, 'inside the model', top[0], top[1], A * sm(0.45, 0.9, crowd) * (1 - sm(0.1, 0.35, g)), 'center');
-      this.label(cx, 'every whistle becomes a point', top[0], top[1], A * sm(0.3, 0.45, g) * (1 - sm(0.6, 0.8, g)), 'center');
-      this.label(cx, 'look-alikes wire together into families', isl[0], isl[1] - 0.4 * this.S * isl[2], A * sm(0.75, 1, g) * (1 - sm(0, 0.35, d)), 'center');
+      this.label(cx, 'inside the machine’s memory', top[0], top[1], A * sm(0.45, 0.9, crowd) * (1 - sm(0.1, 0.35, g)), 'center');
+      this.label(cx, 'each whistle becomes a speck of light', top[0], top[1], A * sm(0.3, 0.45, g) * (1 - sm(0.6, 0.8, g)), 'center');
+      this.label(cx, 'look-alikes swim together in schools', isl[0], isl[1] - 0.4 * this.S * isl[2], A * sm(0.75, 1, g) * (1 - sm(0, 0.35, d)), 'center');
       return scr;
     }
 
@@ -329,7 +332,7 @@
       }
       const c = this.mainPos(P), s = 1 - sm(0.35, 0.95, P.crowd), [x, y, k] = this.proj(c[0], c[1], c[2], cam);
       if (s > 0.01) this.line(cx, this.billboard(c, MAIN, s, cam), A, lerp(1.1, 1.9, s));
-      const pa = A * sm(0.65, 1, P.crowd) * (1 - 0.6 * P.unfold);
+      const pa = A * sm(0.65, 1, P.crowd) * (1 - sm(0, 0.6, P.unfold));
       this.glowDot(cx, x, y, 2.4 + 1.6 * Math.min(k, 1.6), pa);
       return null;
     }
@@ -343,15 +346,16 @@
       if (scr) {
         const w = new Path2D();
         for (const i of this.parents) { w.moveTo(x, y); w.lineTo(scr[i][0], scr[i][1]); }
-        cx.lineWidth = 1.2; cx.strokeStyle = `rgba(${INK},${0.55 * A * born * (1 - u)})`; cx.stroke(w);
+        cx.lineWidth = 1.2; cx.strokeStyle = `rgba(${SUN},${0.5 * A * born * (1 - u)})`; cx.stroke(w);
       }
       for (let i = 0; i < 3; i++) {                         // rings spreading out from the new point
         const rr = sm(0.4, 1, d) * (18 + 26 * i) * k * (1 - u * 0.5);
-        if (rr > 1) { cx.strokeStyle = `rgba(${PALE},${A * 0.45 * (1 - i / 3) * (1 - u)})`; cx.lineWidth = 1;
+        if (rr > 1) { cx.strokeStyle = `rgba(${SUN},${A * 0.5 * (1 - i / 3) * (1 - u)})`; cx.lineWidth = 1;
                       cx.beginPath(); cx.arc(x, y, rr, 0, 6.2832); cx.stroke(); }
       }
-      this.glowDot(cx, x, y, 3.2 * born + 1, A * born * (1 - 0.9 * u));
-      this.label(cx, 'a new spot, between whistles it knows…', x + 24, y - 20, A * sm(0.55, 0.9, d) * (1 - sm(0.1, 0.4, u)));
+      blit(cx, spr(SUN, 'glow'), x, y, 46 * born * k, 0.35 * A * born * (1 - u));
+      this.glowDot(cx, x, y, 3.2 * born + 1, A * born * (1 - sm(0.2, 0.8, u)), SUN);
+      this.label(cx, 'a new place, among whistles it knows…', x + 28, y - 24, A * sm(0.35, 0.7, d) * (1 - sm(0.2, 0.5, u)));
       if (u <= 0.001) return;
       const b = this.box, X0 = b.x0 + 0.05 * (b.x1 - b.x0), X1 = b.x1 - 0.02 * (b.x1 - b.x0);
       const Y = (b.y0 + b.y1) / 2 + 0.04 * (b.y1 - b.y0), Hh = 0.27 * (b.y1 - b.y0), f = FAMILIES[NEW.f], pts = [];
@@ -367,13 +371,13 @@
         this.label(cx, 'time →', X1, Y + Hh * 1.15 + 22, fa * 1.6, 'right');
         this.label(cx, 'pitch ↑', X0 - 14, Y - Hh * 1.1 - 12, fa * 1.6);
       }
-      this.line(cx, pts, A, 2.1);
-      this.label(cx, '…unfolds into a new whistle', X1, Y - Hh * 1.1 - 12, A * sm(0.75, 1, u), 'right');
+      this.line(cx, pts, A, 2.1, true, SUN);
+      this.label(cx, '…and rises as a new whistle', X1, Y - Hh * 1.1 - 12, A * sm(0.75, 1, u), 'right');
       if (P.playT != null && u > 0.5) {                      // playhead while "Hear it" plays
         const i = Math.round(P.playT * (this.N - 1)), px = pts[i][0];
         cx.strokeStyle = `rgba(${INK},${0.35 * A})`; cx.lineWidth = 1;
         cx.beginPath(); cx.moveTo(px, Y - Hh * 1.1); cx.lineTo(px, Y + Hh * 1.15); cx.stroke();
-        this.glowDot(cx, px, pts[i][1], 4, A);
+        this.glowDot(cx, px, pts[i][1], 4, A, SUN);
       }
     }
 
@@ -391,7 +395,7 @@
       const ridge = this.drawMain(cx, cam, A, P);
       this.drawNew(cx, cam, A, P, scr);
       if (ridge) {                                           // Listen's labels: axes on the landscape, "its shape" from above
-        const o = A * P.rise * (1 - sm(0.3, 0.75, P.tip)), q = A * sm(0.65, 1, P.tip) * (1 - sm(0, 0.2, P.crowd));
+        const o = A * P.rise * (1 - sm(0.05, 0.4, P.tip)), q = A * sm(0.65, 1, P.tip) * (1 - sm(0, 0.2, P.crowd));
         const t1 = this.proj(0.95, 0, -1.16, cam), p1 = this.proj(1.42, 0, 1.0, cam), peak = ridge[Math.round(this.N * 0.13)];
         this.label(cx, 'time →', t1[0], t1[1] + 18, o, 'right');
         this.label(cx, 'pitch', p1[0] + 10, p1[1], o);
@@ -402,8 +406,6 @@
         this.label(cx, 'pitch ↑', pl[0], pl[1], q);
         this.label(cx, 'its shape', ridge[this.N - 1][0] + 16, ridge[this.N - 1][1] + 5, q);
       }
-      cx.font = `400 ${this.fs - 2}px "IBM Plex Mono", monospace`;
-      this.label(cx, 'illustration · not model output', this.box.x0, this.box.y1 + 34, A * 0.6);
     }
   }
   window.ResearchScene = ResearchScene;
