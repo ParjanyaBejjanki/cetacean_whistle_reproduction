@@ -30,7 +30,10 @@ from .train import Trainer, run_spec, train_vae
 CRITERIA = {
     "G1": "all images finite, within [0, 1], per-image max == 1; counts equal dataset_info.json",
     "G2": "max |GPU - CPU| <= 1e-5 for x_hat, mu, logvar and critic output on 16 real images; all losses and gradients finite",
-    "G3": "2 epochs x 2,048 images: finite; resume at the epoch boundary reproduces the uninterrupted run bit-identically",
+    "G3": ("2 epochs x 2,048 images: finite; (a) a trainer restored from the epoch-1 checkpoint equals that checkpoint "
+           "bit-identically; (b) max |resumed - uninterrupted| <= 10 x max |uninterrupted - repeated uninterrupted| "
+           "(bit-identical when the repeat is). Revised 2026-10-22: GPU training with the critic is not bit-reproducible "
+           "even without resume (spec §4)"),
     "G4": "256 images, <= 3,000 VAE steps: SSE(z = mu, unrotated) <= 0.3 x SSE of the all-zero image; finite",
     "G5": "recorded only: s/iteration, data-wait fraction, peak GPU memory, projected 300-epoch hours",
     "G6": ">= 95 % of 4,000 real images have |L - n_frames| <= 2 and >= 95 % have |df - bandwidth/93.75 Hz| <= 1.5 bins",
@@ -89,8 +92,8 @@ def gate_numerics(cfg) -> dict:
     ld, pd = critic_loss(cri_g, xr, xf, torch.rand(16, 1, 1, 1, device=dev), spec["lambda_gp"])
     ld.backward()
     g_crit = all(torch.isfinite(p.grad).all() for p in cri_g.parameters())
-    xh, mu, lv = vae_g(xr, eps.to(dev))
-    lt, parts = vae_loss(xh, xr, mu, lv, cri_g.logit(xh), spec["beta"], spec["lambda_adv"], True)
+    lg_x, mu, lv = vae_g.forward_logits(xr, eps.to(dev))
+    lt, parts = vae_loss(lg_x, xr, mu, lv, cri_g.logit(torch.sigmoid(lg_x)), spec["beta"], spec["lambda_adv"], True, spec["recon"])
     lt.backward()
     g_vae = all(torch.isfinite(p.grad).all() for p in vae_g.parameters())
     vals = {"max_abs_diff": diffs, "critic_loss": float(ld.detach()), "vae_loss": float(lt.detach()), **{k: float(v) for k, v in {**pd, **parts}.items()},
@@ -121,25 +124,47 @@ def _state_equal(a: dict, b: dict) -> tuple[bool, float]:
     return same, worst
 
 
+def _to_cpu(obj):
+    if isinstance(obj, torch.Tensor):
+        return obj.detach().cpu()
+    if isinstance(obj, dict):
+        return {k: _to_cpu(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return type(obj)(_to_cpu(v) for v in obj)
+    return obj
+
+
 def gate_smoke(cfg) -> dict:
     im = _images(cfg)
     sub = SubsetImages(im, np.sort(np.random.default_rng(3).choice(len(im), 2048, replace=False)))
     root = _gates_dir(cfg) / f"smoke_{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}"
-    sa = run_spec(cfg, "uninterrupted", epochs=2)
-    sb = {**run_spec(cfg, "resumed", epochs=2)}
+    specs = {n: run_spec(cfg, n, epochs=2) for n in ("uninterrupted", "repeat", "resumed")}
     t0 = time.time()
-    train_vae(cfg, sa, images=sub, out_root=root, write_samples=False, quiet=True)
-    train_vae(cfg, sb, images=sub, out_root=root, stop_after_epoch=1, write_samples=False, quiet=True)
-    train_vae(cfg, sb, images=sub, out_root=root, resume=True, write_samples=False, quiet=True)
-    a = torch.load(root / "uninterrupted" / "checkpoints" / "final.pt", weights_only=False)
-    b = torch.load(root / "resumed" / "checkpoints" / "final.pt", weights_only=False)
-    a.pop("spec"); b.pop("spec")
-    same, worst = _state_equal(a, b)
+    train_vae(cfg, specs["uninterrupted"], images=sub, out_root=root, write_samples=False, quiet=True)
+    train_vae(cfg, specs["repeat"], images=sub, out_root=root, write_samples=False, quiet=True)
+    train_vae(cfg, specs["resumed"], images=sub, out_root=root, stop_after_epoch=1, write_samples=False, quiet=True)
+    # (a) restoring the epoch-1 checkpoint reproduces it exactly
+    ck1 = torch.load(root / "resumed" / "checkpoints" / "last.pt", map_location="cpu", weights_only=False)
+    dev = resolve_device(cfg["train"]["device"])
+    tr = Trainer(specs["resumed"], sub, dev)
+    tr.load(root / "resumed" / "checkpoints" / "last.pt")
+    restored = _to_cpu({k: v for k, v in tr.state().items() if k != "spec"})
+    ck1.pop("spec")
+    restore_exact, _ = _state_equal(ck1, restored)
+    # (b) resumed vs uninterrupted, compared with the run-to-run envelope
+    train_vae(cfg, specs["resumed"], images=sub, out_root=root, resume=True, write_samples=False, quiet=True)
+    fin = {n: torch.load(root / n / "checkpoints" / "final.pt", map_location="cpu", weights_only=False) for n in specs}
+    for v in fin.values():
+        v.pop("spec")
+    same_rep, env = _state_equal(fin["uninterrupted"], fin["repeat"])
+    same_res, diff = _state_equal(fin["uninterrupted"], fin["resumed"])
+    within = same_res if same_rep else diff <= 10.0 * env
     logs = [json.loads(l) for l in (root / "uninterrupted" / "train_log.jsonl").read_text().splitlines()]
     ep = [r for r in logs if r.get("epoch_summary")]
-    vals = {"bit_identical_resume": same, "max_abs_param_diff": worst, "epoch_summaries": ep, "wall_s": round(time.time() - t0, 1),
-            "dir": str(root)}
-    return _record(cfg, "G3", same and len(ep) == 2, vals)
+    vals = {"restore_exact": restore_exact, "run_to_run_identical": same_rep, "run_to_run_max_abs_diff": env,
+            "resumed_identical": same_res, "resumed_max_abs_diff": diff, "within_envelope": bool(within),
+            "epoch_summaries": ep, "wall_s": round(time.time() - t0, 1), "dir": str(root)}
+    return _record(cfg, "G3", restore_exact and within and len(ep) == 2, vals)
 
 
 @torch.no_grad()

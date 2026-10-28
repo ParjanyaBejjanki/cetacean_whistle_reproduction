@@ -59,6 +59,11 @@ def code_version() -> dict:
         return {"git_commit": git("rev-parse", "HEAD"),
                 "git_uncommitted_code_changes": bool(git("status", "--porcelain", "--", "src", "configs", "whistle.py"))}
     except Exception:   # noqa: BLE001  (no git / not a repository)
+        bundle = PROJECT_ROOT / "CODE_VERSION.json"      # written by colab/make_colab_bundle.py for copies without .git
+        if bundle.exists():
+            info = json.loads(bundle.read_text(encoding="utf-8"))
+            return {"git_commit": info.get("git_commit"), "git_uncommitted_code_changes": info.get("git_uncommitted_code_changes"),
+                    "code_bundle_created_utc": info.get("created_utc")}
         return {"git_commit": None, "git_uncommitted_code_changes": None}
 
 

@@ -71,11 +71,16 @@ class VAE(nn.Module):
         self.decoder = Decoder(latent_dim)
         glorot_init(self)
 
-    def forward(self, x: torch.Tensor, eps: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        """Reparameterised pass: z = mu + exp(logvar/2) * eps (eps supplied by the caller for reproducibility)."""
+    def forward_logits(self, x: torch.Tensor, eps: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Reparameterised pass returning the decoder LOGITS: z = mu + exp(logvar/2) * eps (eps from the caller)."""
         mu, logvar = self.encoder(x)
         z = mu + torch.exp(0.5 * logvar) * eps
-        return self.decoder(z), mu, logvar
+        return self.decoder.logits(z), mu, logvar
+
+    def forward(self, x: torch.Tensor, eps: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Reparameterised pass returning the reconstruction image sigmoid(logits), mu, log sigma^2."""
+        logits, mu, logvar = self.forward_logits(x, eps)
+        return torch.sigmoid(logits), mu, logvar
 
 
 class Critic(nn.Module):

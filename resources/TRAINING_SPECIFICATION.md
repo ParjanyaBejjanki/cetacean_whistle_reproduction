@@ -44,6 +44,8 @@ This audit covers the plan of 2026-10-21 and the brief of 2026-10-22, checked ag
 | 15 | F1 consistency | — | F1 = 2PR/(P+R) reproduces every printed F1 in Tables 2–5; WGAN-GP row: 70.69 computed vs 70.70 printed (rounding) | No action |
 | 16 | GMM data per component | — | 228,673 / 10,000 = 22.9 images per component in the paper; ours 180,154 / 10,000 = 18.0. A full 64-D sample covariance needs ≥ 65 points | Regularisation is **required** but unstated **[DECISION]** (§3.5) |
 | 17 | Table 4 row 2 = Table 5 row "WGAN-GP" | — | Identical numbers (13.82 / 202.51 / 61.47 / 83.17 / 70.70) | Same model, trained once |
+| 18 | Reconstruction loss (added 2026-10-22, after gate G4 failed) | squared error per image | −log p(x\|z), form not stated | Squared error on the sigmoid output saturated on the sparse images: whistle-pixel logits ≈ −40, sigmoid′ ≈ 1e-8, blank outputs, at both learning rates tried. **Bernoulli NLL (binary cross-entropy from logits)** does not saturate and learned in a diagnostic run [DECISION, revised] |
+| 19 | Gate G3 criterion (added 2026-10-22) | bit-identical resume | — | Two identical GPU runs with the critic already differ by ≈ 1e-6 after one step (kernel-level float effects; runs without the critic are bit-identical). Criterion revised after this observation: exact restore of the checkpoint, and a resumed-vs-uninterrupted difference ≤ 10 × the run-to-run difference |
 
 ## 2. Fixed input
 
@@ -108,7 +110,7 @@ The only numerical safeguard is computing log D as `logsigmoid(a)`, an identical
 - L_rec = −log p(x|z) of a whole image is a **sum over pixels**; L_KL is the analytic KL **summed over the L dimensions**.
 
 **[DECISION]**
-- L_rec = per-image sum of squared errors (Gaussian likelihood with fixed variance, up to a constant). This matches the paper's own error convention (item 12). Alternative not used: Bernoulli cross-entropy.
+- L_rec = per-image sum of binary cross-entropy, computed from the decoder logits (Bernoulli likelihood). Revised from squared error after gate G4 (item 18); `decisions.loss.recon` keeps both selectable. Table 1's MSE remains the per-image squared error (item 12).
 - One reparameterised z per image.
 - In eqs. 4 and 5, x̂ = decoder output for z ~ q(z|x) of the **same** real batch, i.e. the "VAE outputs" (Fig. 4: reconstruction branch into the critic).
 
@@ -117,12 +119,12 @@ The only numerical safeguard is computing log D as `logsigmoid(a)`, an identical
 | Item | Paper | Used here |
 |---|---|---|
 | Optimiser | Adam, both nets [EXPLICIT] | Adam |
-| VAE learning rate | 1e-3 at aggregate batch 896 [EXPLICIT] | **1.4286e-4 = 1e-3 × 128/896 [DEVIATION]** |
-| Critic learning rate | 2e-4 at aggregate batch 896 [EXPLICIT] | **2.8571e-5 = 2e-4 × 128/896 [DEVIATION]** |
+| VAE learning rate | 1e-3 at aggregate batch 896 [EXPLICIT] | **1e-3 × B/896 [DEVIATION unless B = 896]**: 3e-3 at B = 2688 (Colab A100 40 GB), 6e-3 at B = 5376 (80 GB), 1.4286e-4 at B = 128 (laptop gates) |
+| Critic learning rate | 2e-4 at aggregate batch 896 [EXPLICIT] | **2e-4 × B/896**: 6e-4 at B = 2688, 1.2e-3 at B = 5376, 2.8571e-5 at B = 128 |
 | Critic Adam β₁, β₂ | 0, 0.9 [EXPLICIT] | 0, 0.9 |
 | VAE Adam β₁, β₂, ε | not stated | 0.9, 0.999, 1e-8 [DECISION] (Adam defaults) |
 | LR schedule | not stated | constant [DECISION] |
-| Batch | 128/GPU × 7 = 896 [EXPLICIT] | **128, one GPU [DEVIATION]** |
+| Batch | 128/GPU × 7 = 896 [EXPLICIT] | **One GPU. Main run on a Colab A100: B = 2688 (40 GB) or 5376 (80 GB) [DEVIATION]; fallback B = 896 with the paper's learning rates (no deviation). Laptop gates: B = 128.** Set per run by override (`colab/train_V1_colab.ipynb`), recorded in `train_info.json`. Optional gradient accumulation (`train.micro_batch`) gives the same update with less memory |
 | Critic steps | 3 per VAE iteration [EXPLICIT] | 3; critic steps precede each VAE step, each on a **fresh** real batch ([49] Alg. 1) [DECISION] |
 | Epochs | 300 [EXPLICIT] | 300 = 1,408 VAE steps/epoch (last batch 58 images) = 422,400 VAE + 1,267,200 critic updates |
 | Model kept | not stated | final epoch; no early stopping or model selection [DECISION] |
@@ -226,7 +228,15 @@ Unit conversion [IMPLIED, Table 3 errors]: 5.333 ms per sample, 93.75 Hz per bin
 
 Sweeps never start before V1 has finished and been evaluated.
 
-### 3.9 Implementation status (2026-10-22)
+### 3.9 Runtime options (no effect on the method)
+
+| Option | Effect |
+|---|---|
+| `train.micro_batch` | gradient accumulation over chunks (same update, less GPU memory) |
+| `train.cudnn_benchmark` | cuDNN autotuning: same maths, faster kernels, not bit-deterministic |
+| `train.tf32` | TF32 tensor cores (Ampere and newer): slightly reduced internal precision. Stored in the run spec; a [DEVIATION] when used |
+
+### 3.10 Implementation status (2026-10-22)
 
 | Part | Status |
 |---|---|
@@ -244,8 +254,9 @@ Sweeps never start before V1 has finished and been evaluated.
 | G0 unit tests | `pytest` green. Covers: architecture shapes and Table 6 counts; KL closed form vs Monte Carlo; logsigmoid ≡ log∘sigmoid; gradient penalty by finite differences (float64); accumulation equivalence; Adam scale invariance; the rotation group; loader read-only behaviour and coverage; EM vs scikit-learn; features on synthetic contours; W₁ vs scipy; Fréchet vs analytic Gaussians; P/R on identical/disjoint sets; equation-level conditional weights |
 | G1 data | All 180,154 images finite, in [0, 1], max = 1; counts equal `dataset_info.json` |
 | G2 numerics | GPU-vs-CPU forward parity of VAE and critic (max abs. diff ≤ 1e-5); finite losses and gradients on real batches |
-| G3 smoke | 2 epochs on a 2,048-image subset; checkpoint and resume at the epoch boundary reproduces the uninterrupted run **bit-identically** on the same device |
+| G3 smoke | 2 epochs on a 2,048-image subset. (a) A trainer restored from the epoch-1 checkpoint equals it bit-identically; (b) max \|resumed − uninterrupted\| ≤ 10 × max \|uninterrupted − repeated uninterrupted\| (bit-identical when the repeat is). Revised 2026-10-22 (item 19) |
 | G4 overfit | Full objective, batch 128, the run's learning rates, 256 fixed images. Within 3,000 VAE steps the reconstruction SSE (z = μ, unrotated) drops to ≤ 0.3 × the SSE of the all-zero image; all losses finite |
+| G4 outcome (2026-10-28) | Cross-entropy loss: ratio 0.923 → **0.416 at step 3,000** (criterion **not met** as measured; monotone, accelerating decrease, last drop 0.098 per 250 steps). **Accepted by the project owner** without a longer run, on the extrapolation that ≤ 0.3 is reached at about 3,300–3,500 steps (not measured). Records: `G4_20261028T054038Z.json` (measured), `G4_owner_acceptance_*.json` (decision) |
 | G5 timing | 200 measured iterations on the full data after 20 warm-up: seconds/iteration, data-wait fraction, peak GPU memory, projected 300-epoch hours. Recorded, not thresholded |
 | G6 features | On ≥ 2,000 real images: \|L − n_frames\| ≤ 2 for ≥ 95 % and \|Δf − bandwidth_hz/93.75\| ≤ 1.5 bins for ≥ 95 % |
 

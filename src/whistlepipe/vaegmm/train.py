@@ -41,6 +41,8 @@ def run_spec(cfg, run_id: str, latent_dim: int | None = None, beta: float | None
             "critic_betas": [float(p["critic_adam_beta1"]), float(p["critic_adam_beta2"])],
             "vae_betas": [float(b) for b in cfg["decisions"]["optim"]["vae_adam_betas"]],
             "adam_eps": float(cfg["decisions"]["optim"]["adam_eps"]),
+            "recon": str(cfg["decisions"]["loss"]["recon"]),
+            "tf32": bool(cfg["train"].get("tf32", False)),
             "seed": int(cfg["decisions"]["train"]["seed"])}
 
 
@@ -49,9 +51,27 @@ def source_hashes() -> dict:
     return {str(f.relative_to(PROJECT_ROOT)).replace("\\", "/"): hashlib.sha256(f.read_bytes()).hexdigest() for f in files}
 
 
+def apply_runtime_flags(cfg, spec: dict) -> dict:
+    """After set_deterministic(): optional TF32 (spec, changes numerics slightly) and cuDNN autotuning (cfg[train],
+    same maths, different kernel choice). Training with the critic is not bit-reproducible on GPU anyway (gate G3)."""
+    if cfg["train"].get("cudnn_benchmark", False):
+        torch.backends.cudnn.deterministic = False
+        torch.backends.cudnn.benchmark = True
+        torch.use_deterministic_algorithms(False)
+    if spec.get("tf32", False):
+        torch.backends.cudnn.allow_tf32 = True
+        torch.backends.cuda.matmul.allow_tf32 = True
+    return {"tf32": bool(spec.get("tf32", False)), "cudnn_benchmark": bool(cfg["train"].get("cudnn_benchmark", False)),
+            "micro_batch": int(cfg["train"].get("micro_batch", 0) or 0), "prefetch": int(cfg["train"]["prefetch"])}
+
+
 class Trainer:
-    def __init__(self, spec: dict, images, device: torch.device):
+    def __init__(self, spec: dict, images, device: torch.device, micro_batch: int = 0):
+        """``micro_batch`` (0 = whole batch) splits every batch into chunks whose gradients are accumulated with weight
+        chunk/batch; all losses are batch means of per-image terms and no layer uses batch statistics, so the update
+        equals the whole-batch update (up to float summation order). Memory only; not part of the run spec."""
         self.spec, self.images, self.dev = spec, images, device
+        self.micro = int(micro_batch or 0)
         torch.manual_seed(spec["seed"])
         self.vae = VAE(spec["latent_dim"]).to(device)
         self.critic = Critic().to(device) if spec["use_critic"] else None
@@ -62,6 +82,10 @@ class Trainer:
         self.global_step = 0
 
     # ------------------------------------------------------------------ one iteration
+    def _chunks(self, b: int) -> list[slice]:
+        m = self.micro if 0 < self.micro < b else b
+        return [slice(i, min(i + m, b)) for i in range(0, b, m)]
+
     def step(self, critic_batches, vae_batch, g: torch.Generator, measure: bool = False) -> dict:
         s, dev, L = self.spec, self.dev, self.spec["latent_dim"]
         out = {}
@@ -69,33 +93,46 @@ class Trainer:
             for xr in critic_batches:
                 xr = xr.to(dev, non_blocking=True)
                 b = xr.shape[0]
+                # whole-batch random draws first (same order as without micro-batching)
                 xr = random_rot90(xr, torch.randint(0, 4, (b,), generator=g, device=dev))
-                with torch.no_grad():
-                    x_fake, _, _ = self.vae(xr, torch.randn(b, L, generator=g, device=dev))
+                z_eps = torch.randn(b, L, generator=g, device=dev)
                 eps = torch.rand(b, 1, 1, 1, generator=g, device=dev)
-                loss_d, pd = critic_loss(self.critic, xr, x_fake, eps, s["lambda_gp"])
                 self.opt_c.zero_grad(set_to_none=True)
-                loss_d.backward()
+                acc = {}
+                for sl in self._chunks(b):
+                    w = (sl.stop - sl.start) / b
+                    with torch.no_grad():
+                        x_fake = torch.sigmoid(self.vae.forward_logits(xr[sl], z_eps[sl])[0])
+                    loss_d, pd = critic_loss(self.critic, xr[sl], x_fake, eps[sl], s["lambda_gp"])
+                    (loss_d * w).backward()
+                    for k, v in {"loss_d": loss_d.detach(), **pd}.items():
+                        acc[k] = acc.get(k, 0.0) + w * v
                 self.opt_c.step()
-            out.update({"loss_d": loss_d.detach(), **pd})
+            out.update(acc)
         x = vae_batch.to(dev, non_blocking=True)
         b = x.shape[0]
         x = random_rot90(x, torch.randint(0, 4, (b,), generator=g, device=dev))
-        x_hat, mu, logvar = self.vae(x, torch.randn(b, L, generator=g, device=dev))
-        logit = None
+        z_eps = torch.randn(b, L, generator=g, device=dev)
         if self.critic is not None:
             self.critic.requires_grad_(False)
-            logit = self.critic.logit(x_hat)
-        loss, parts = vae_loss(x_hat, x, mu, logvar, logit, s["beta"], s["lambda_adv"], self.critic is not None)
         self.opt_v.zero_grad(set_to_none=True)
-        loss.backward()
+        acc = {}
+        for sl in self._chunks(b):
+            w = (sl.stop - sl.start) / b
+            logits, mu, logvar = self.vae.forward_logits(x[sl], z_eps[sl])
+            logit = self.critic.logit(torch.sigmoid(logits)) if self.critic is not None else None
+            loss, parts = vae_loss(logits, x[sl], mu, logvar, logit, s["beta"], s["lambda_adv"], self.critic is not None,
+                                   s.get("recon", "bce_sum"))
+            (loss * w).backward()
+            for k, v in {"loss_vae": loss.detach(), **parts}.items():
+                acc[k] = acc.get(k, 0.0) + w * v
         if measure:
             out["gradnorm_vae"] = torch.nn.utils.clip_grad_norm_(self.vae.parameters(), float("inf")).detach()
         self.opt_v.step()
         if self.critic is not None:
             self.critic.requires_grad_(True)
         self.global_step += 1
-        out.update({"loss_vae": loss.detach(), **parts})
+        out.update(acc)
         return out
 
     def epoch_generator(self, epoch: int) -> torch.Generator:
@@ -150,7 +187,9 @@ class Trainer:
         os.replace(tmp, path)
 
     def load(self, path: Path) -> None:
-        st = torch.load(path, map_location=self.dev, weights_only=False)
+        # load to CPU: load_state_dict then places model/optimizer tensors exactly as in an uninterrupted run
+        # (Adam keeps its 'step' counters on the CPU; mapping them to CUDA would make resumed runs differ structurally)
+        st = torch.load(path, map_location="cpu", weights_only=False)
         if st["spec"] != self.spec:
             raise ValueError(f"checkpoint {path} was trained with a different run spec:\n{st['spec']}\nvs\n{self.spec}")
         self.vae.load_state_dict(st["vae"])
@@ -204,9 +243,10 @@ def train_vae(cfg, spec: dict, resume: bool = False, images=None, out_root: Path
         raise FileExistsError(f"{out} exists; runs are never overwritten (use --resume to continue it)")
     ck.mkdir(parents=True, exist_ok=True)
     set_deterministic()
+    runtime = apply_runtime_flags(cfg, spec)
     dev = resolve_device(cfg["train"]["device"])
     images = images if images is not None else WhistleImages(resolve(cfg["paths"]["dataset_dir"]))
-    trainer = Trainer(spec, images, dev)
+    trainer = Trainer(spec, images, dev, runtime["micro_batch"])
     if resume and (ck / "last.pt").exists():
         trainer.load(ck / "last.pt")
     log_path = out / "train_log.jsonl"
@@ -223,6 +263,7 @@ def train_vae(cfg, spec: dict, resume: bool = False, images=None, out_root: Path
         info = {"status": "running", "spec": spec, "deviations": cfg.to_dict()["deviations"],
                 "config_effective_hash": cfg["_meta"]["effective_hash"], "config": {k: v for k, v in cfg.to_dict().items() if k != "_meta"},
                 "dataset": lineage, "source_sha256": source_hashes(), "software": software_versions(), "device": str(dev),
+                "runtime": runtime,
                 "n_params": {"encoder": n_params(trainer.vae.encoder), "decoder": n_params(trainer.vae.decoder),
                              "critic": n_params(trainer.critic) if trainer.critic else 0},
                 "decoder_table6_flops": table6_flops(Decoder(spec["latent_dim"]), (spec["latent_dim"],)),
