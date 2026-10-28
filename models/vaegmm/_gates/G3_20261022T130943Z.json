@@ -1,0 +1,63 @@
+{
+  "gate": "G3",
+  "criterion": "2 epochs x 2,048 images: finite; resume at the epoch boundary reproduces the uninterrupted run bit-identically",
+  "passed": false,
+  "values": {
+    "bit_identical_resume": false,
+    "max_abs_param_diff": 10.002380847930908,
+    "epoch_summaries": [
+      {
+        "epoch_summary": true,
+        "loss_d": 0.9494555592536926,
+        "d_real": 0.8800705075263977,
+        "d_fake": 0.5822242498397827,
+        "gp": 0.249460369348526,
+        "gnorm": 0.9274944067001343,
+        "loss_vae": 4036.290283203125,
+        "rec": 4035.728515625,
+        "kl": 0.003952881786972284,
+        "adv": 0.5621576905250549,
+        "epoch": 1,
+        "steps": 16,
+        "epoch_s": 10.5,
+        "loader_wait_s": 0.1
+      },
+      {
+        "epoch_summary": true,
+        "loss_d": -0.0011060237884521484,
+        "d_real": 0.9556123614311218,
+        "d_fake": 0.5236342549324036,
+        "gp": 0.08617439866065979,
+        "gnorm": 0.9279804229736328,
+        "loss_vae": 3968.4306640625,
+        "rec": 3967.777587890625,
+        "kl": 0.3557994067668915,
+        "adv": 0.652692437171936,
+        "epoch": 2,
+        "steps": 16,
+        "epoch_s": 9.1,
+        "loader_wait_s": 0.0
+      }
+    ],
+    "wall_s": 40.5,
+    "dir": "D:\\ALL\\cetacean_whistle_reproduction\\models\\vaegmm\\_gates\\smoke_20261022T130903Z"
+  },
+  "utc": "2026-10-22T13:09:43Z",
+  "config_effective_hash": "3b0e5ec4412b7a318632aa0270cbf32e1479636d066214bbb1d6fc1a37f5b228",
+  "software": {
+    "python": "3.11.0",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "numpy": "2.4.4",
+    "scipy": "1.17.1",
+    "soundfile": "0.13.1",
+    "libsndfile": "1.2.2",
+    "git_commit": "f6827cee7110991b691a20867d7a631324142624",
+    "git_uncommitted_code_changes": true,
+    "torch": "2.14.0+cu130",
+    "cuda_available": true,
+    "tf32_conv_allowed": false,
+    "tf32_matmul_allowed": false,
+    "deterministic_algorithms": true,
+    "cuda_device": "NVIDIA GeForce RTX 5060 Laptop GPU"
+  }
+}

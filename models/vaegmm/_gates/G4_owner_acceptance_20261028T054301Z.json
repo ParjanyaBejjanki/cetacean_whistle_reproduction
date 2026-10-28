@@ -1,0 +1,68 @@
+{
+  "gate": "G4",
+  "status": "ACCEPTED BY PROJECT OWNER (criterion not met as measured)",
+  "measured_record": "G4_20261028T054038Z.json",
+  "measured_passed": false,
+  "criterion": "256 images, <= 3,000 VAE steps: SSE(z = mu, unrotated) <= 0.3 x SSE of the all-zero image; finite",
+  "measured_final": {
+    "step": 3000,
+    "sse_ratio": 0.4155
+  },
+  "measured_curve_step_ratio": [
+    [
+      0,
+      59.85
+    ],
+    [
+      250,
+      0.9234
+    ],
+    [
+      500,
+      0.9099
+    ],
+    [
+      750,
+      0.9033
+    ],
+    [
+      1000,
+      0.9011
+    ],
+    [
+      1250,
+      0.8979
+    ],
+    [
+      1500,
+      0.8781
+    ],
+    [
+      1750,
+      0.8458
+    ],
+    [
+      2000,
+      0.8029
+    ],
+    [
+      2250,
+      0.7149
+    ],
+    [
+      2500,
+      0.6168
+    ],
+    [
+      2750,
+      0.5131
+    ],
+    [
+      3000,
+      0.4155
+    ]
+  ],
+  "decision": "Project owner accepted G4 on 2026-10-28 without a longer run. Basis: monotone, accelerating decrease of the SSE ratio (0.923 at step 250 -> 0.416 at step 3,000; last drop 0.098 per 250 steps), which indicates the 0.3 threshold would be reached at roughly 3,300-3,500 steps. This is an extrapolation, not a measurement. The blank-output collapse of the squared-error loss (ratio stuck at 1.0002) is resolved by the cross-entropy loss.",
+  "decided_by": "project owner",
+  "utc": "2026-10-28T05:43:01Z"
+}

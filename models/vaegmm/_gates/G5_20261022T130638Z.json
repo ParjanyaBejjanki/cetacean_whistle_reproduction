@@ -1,0 +1,55 @@
+{
+  "gate": "G5",
+  "criterion": "recorded only: s/iteration, data-wait fraction, peak GPU memory, projected 300-epoch hours",
+  "passed": true,
+  "values": {
+    "with_critic": {
+      "s_per_iteration": 0.5645740585000021,
+      "data_wait_fraction": 3.094368199674071e-05,
+      "peak_gpu_mem_gb": 1.704656896,
+      "steps_per_epoch": 1408,
+      "projected_hours_300_epochs": 66.24335619733358,
+      "last_losses": {
+        "loss_d": -0.4992179572582245,
+        "d_real": 0.7980722784996033,
+        "d_fake": 0.16420945525169373,
+        "gp": 0.02692897990345955,
+        "gnorm": 0.9427115321159363,
+        "loss_vae": 59.95761489868164,
+        "rec": 57.930850982666016,
+        "kl": 2098.442626953125,
+        "adv": 1.8169219493865967
+      }
+    },
+    "no_critic": {
+      "s_per_iteration": 0.06587100599999758,
+      "data_wait_fraction": 0.0002403485374682476,
+      "peak_gpu_mem_gb": 1.668061184,
+      "steps_per_epoch": 1408,
+      "projected_hours_300_epochs": 7.728864703999716,
+      "last_losses": {
+        "loss_vae": 58.15692138671875,
+        "rec": 57.93994903564453,
+        "kl": 2169.724853515625
+      }
+    }
+  },
+  "utc": "2026-10-22T13:06:38Z",
+  "config_effective_hash": "3b0e5ec4412b7a318632aa0270cbf32e1479636d066214bbb1d6fc1a37f5b228",
+  "software": {
+    "python": "3.11.0",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "numpy": "2.4.4",
+    "scipy": "1.17.1",
+    "soundfile": "0.13.1",
+    "libsndfile": "1.2.2",
+    "git_commit": "f6827cee7110991b691a20867d7a631324142624",
+    "git_uncommitted_code_changes": false,
+    "torch": "2.14.0+cu130",
+    "cuda_available": true,
+    "tf32_conv_allowed": false,
+    "tf32_matmul_allowed": false,
+    "deterministic_algorithms": true,
+    "cuda_device": "NVIDIA GeForce RTX 5060 Laptop GPU"
+  }
+}

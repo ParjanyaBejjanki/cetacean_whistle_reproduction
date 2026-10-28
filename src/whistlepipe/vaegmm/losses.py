@@ -7,6 +7,12 @@ log D is evaluated as logsigmoid(a), which is the same function without log(0) w
 
 Every loss is a batch MEAN of per-image terms (the expectations of eqs. 3-5); within an image the reconstruction
 term is a SUM over pixels and the KL term a SUM over latent dimensions.
+
+Reconstruction term L_rec = -log p(x|z): the paper does not give its form. [DECISION, revised 2026-10-22 after gate G4]
+Bernoulli negative log-likelihood (binary cross-entropy, computed from the decoder LOGITS) summed per image. The first
+choice, squared error on the sigmoid output, saturated the sigmoid on the sparse whistle images (logits at whistle
+pixels -40, sigmoid' ~ 1e-8) and the decoder converged to blank images; cross-entropy has no sigmoid' factor in its
+gradient. "sse_sum" is kept selectable for the record.
 """
 from __future__ import annotations
 
@@ -15,8 +21,13 @@ import torch.nn.functional as F
 
 
 def recon_sse(x_hat: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
-    """Per-image sum of squared errors, shape (B,). [DECISION] Gaussian NLL up to a constant."""
+    """Per-image sum of squared errors, shape (B,). Also the "MSE" metric of Table 1."""
     return (x_hat - x).pow(2).flatten(1).sum(1)
+
+
+def recon_bce(x_logits: torch.Tensor, x: torch.Tensor) -> torch.Tensor:
+    """Per-image sum of binary cross-entropy between sigmoid(x_logits) and x in [0, 1], shape (B,)."""
+    return F.binary_cross_entropy_with_logits(x_logits, x, reduction="none").flatten(1).sum(1)
 
 
 def kl_std_normal(mu: torch.Tensor, logvar: torch.Tensor) -> torch.Tensor:
@@ -29,9 +40,16 @@ def adv_neg_log_d(critic_logit: torch.Tensor) -> torch.Tensor:
     return -F.logsigmoid(critic_logit)
 
 
-def vae_loss(x_hat, x, mu, logvar, critic_logit_fake, beta: float, lambda_adv: float, use_critic: bool = True):
-    """Eq. 4: L = L_rec + beta L_KL + lambda L_adv (batch means). Returns (total, parts dict of detached means)."""
-    rec = recon_sse(x_hat, x).mean()
+def vae_loss(x_logits, x, mu, logvar, critic_logit_fake, beta: float, lambda_adv: float, use_critic: bool = True,
+             recon: str = "bce_sum"):
+    """Eq. 4: L = L_rec + beta L_KL + lambda L_adv (batch means). ``x_logits`` are the decoder's pre-sigmoid outputs.
+    Returns (total, parts dict of detached means)."""
+    if recon == "bce_sum":
+        rec = recon_bce(x_logits, x).mean()
+    elif recon == "sse_sum":
+        rec = recon_sse(torch.sigmoid(x_logits), x).mean()
+    else:
+        raise ValueError(f"unknown reconstruction loss {recon!r}")
     kl = kl_std_normal(mu, logvar).mean()
     total = rec + beta * kl
     parts = {"rec": rec.detach(), "kl": kl.detach()}

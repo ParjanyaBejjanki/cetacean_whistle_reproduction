@@ -9,7 +9,7 @@ import torch
 
 from whistlepipe.vaegmm.config import TRAINING_PAPER_LOCK, load_vaegmm_config, validate_training_paper_lock
 from whistlepipe.vaegmm.data import SubsetImages, WhistleImages, epoch_plan, random_rot90
-from whistlepipe.vaegmm.losses import adv_neg_log_d, critic_loss, kl_std_normal, recon_sse, vae_loss
+from whistlepipe.vaegmm.losses import adv_neg_log_d, critic_loss, kl_std_normal, recon_bce, recon_sse, vae_loss
 from whistlepipe.vaegmm.models import VAE, Critic, Decoder, Encoder, n_params, table6_flops
 from whistlepipe.vaegmm.train import Trainer, run_spec, train_vae
 
@@ -117,12 +117,30 @@ def test_kl_closed_form_matches_monte_carlo():
 
 def test_recon_is_per_image_sum_and_losses_are_batch_means():
     x = torch.zeros(2, 1, 4, 4)
-    xh = torch.full((2, 1, 4, 4), 0.5)
-    assert torch.allclose(recon_sse(xh, x), torch.tensor([4.0, 4.0]))
+    logits = torch.zeros(2, 1, 4, 4)                         # sigmoid = 0.5
+    assert torch.allclose(recon_sse(torch.sigmoid(logits), x), torch.tensor([4.0, 4.0]))
     mu, lv = torch.zeros(2, 3), torch.zeros(2, 3)
-    total, parts = vae_loss(xh, x, mu, lv, torch.zeros(2), beta=1e-4, lambda_adv=1.0)
+    total, parts = vae_loss(logits, x, mu, lv, torch.zeros(2), beta=1e-4, lambda_adv=1.0, recon="sse_sum")
     assert float(parts["rec"]) == 4.0 and float(parts["adv"]) == pytest.approx(np.log(2))
     assert float(total) == pytest.approx(4.0 + np.log(2))
+    total, parts = vae_loss(logits, x, mu, lv, torch.zeros(2), beta=1e-4, lambda_adv=1.0)       # default: bce_sum
+    assert float(parts["rec"]) == pytest.approx(16 * np.log(2))                              # 16 pixels x ln 2
+    with pytest.raises(ValueError):
+        vae_loss(logits, x, mu, lv, torch.zeros(2), 1e-4, 1.0, recon="l1")
+
+
+def test_bce_reconstruction_matches_cross_entropy_and_has_no_saturation():
+    torch.manual_seed(0)
+    x = torch.rand(3, 1, 8, 8, dtype=torch.float64)
+    lg = 3 * torch.randn(3, 1, 8, 8, dtype=torch.float64)
+    ref = torch.nn.functional.binary_cross_entropy(torch.sigmoid(lg), x, reduction="none").flatten(1).sum(1)
+    assert torch.allclose(recon_bce(lg, x), ref, rtol=1e-10)
+    # a whistle pixel (x = 1) predicted at logit -40: squared error has ~no gradient, cross-entropy does
+    lg1 = torch.tensor([[[[-40.0]]]], dtype=torch.float64, requires_grad=True)
+    one = torch.ones_like(lg1)
+    (g_sse,) = torch.autograd.grad(recon_sse(torch.sigmoid(lg1), one).sum(), lg1)
+    (g_bce,) = torch.autograd.grad(recon_bce(lg1, one).sum(), lg1)
+    assert abs(float(g_sse)) < 1e-15 and float(g_bce) == pytest.approx(-1.0)
 
 
 def test_neg_log_d_equals_log_sigmoid_and_stays_finite():
@@ -191,8 +209,8 @@ def test_accumulated_microbatch_gradient_equals_large_batch_gradient():
 
     def grads(xb, eb):
         vae.zero_grad()
-        xh, mu, lv = vae(xb, eb)
-        loss, _ = vae_loss(xh, xb, mu, lv, cri.logit(xh), 1e-4, 1.0)
+        lg, mu, lv = vae.forward_logits(xb, eb)
+        loss, _ = vae_loss(lg, xb, mu, lv, cri.logit(torch.sigmoid(lg)), 1e-4, 1.0)
         loss.backward()
         return [p.grad.clone() for p in vae.parameters()]
 
@@ -334,3 +352,30 @@ def test_no_critic_run_has_no_adversarial_term(vcfg, tmp_path):
     vb, cb = epoch_plan(len(im), 4, 3, spec["seed"], 1, use_critic=False)
     r = tr.step(cb[0], torch.from_numpy(im.gather(vb[0]))[:, None], torch.Generator().manual_seed(0))
     assert "adv" not in r and "loss_d" not in r
+
+
+def test_micro_batched_step_equals_whole_batch_step(vcfg, tmp_path):
+    """Gradient accumulation over chunks (memory only) gives the same update as the whole batch."""
+    im = WhistleImages(make_fake_dataset(tmp_path / "pre"))
+    spec = {**run_spec(vcfg, "mb"), "batch_size": 8, "latent_dim": 8}
+    vb, cb = epoch_plan(len(im), 8, 3, spec["seed"], 1)
+    to_t = lambda a: torch.from_numpy(im.gather(a))[:, None]
+    runs = []
+    for micro in (0, 3):
+        tr = Trainer(spec, im, torch.device("cpu"), micro_batch=micro)
+        r = tr.step([to_t(c) for c in cb[0]], to_t(vb[0]), torch.Generator().manual_seed(0))
+        # .grad holds the accumulated gradient of the last critic step and of the VAE step
+        grads = {n: [p.grad.clone() for p in m.parameters()] for n, m in (("vae", tr.vae), ("critic", tr.critic))}
+        runs.append((grads, r))
+    (ga, ra), (gb, rb) = runs
+    for net in ("vae", "critic"):
+        for x, y in zip(ga[net], gb[net]):
+            # float32 summation order only (a bias gradient sums ~5e5 pixel terms of mixed sign)
+            assert float((x - y).abs().max()) <= 1e-3 * float(x.abs().max()) + 1e-7, net
+    for k in ("loss_vae", "rec", "kl", "adv", "loss_d", "gp"):
+        assert float(ra[k]) == pytest.approx(float(rb[k]), rel=1e-5, abs=1e-6), k
+
+
+def test_run_spec_records_loss_and_precision(vcfg):
+    spec = run_spec(vcfg, "x")
+    assert spec["recon"] == "bce_sum" and spec["tf32"] is False

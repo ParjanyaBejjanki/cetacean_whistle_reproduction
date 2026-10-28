@@ -211,6 +211,7 @@ python whistle.py vae-experiments                         # experiment matrix V1
 python whistle.py vae-gates                               # gates that do not train: G1 data, G2 numerics, G6 features
 python whistle.py vae-gates --gate all --allow-training   # + G3 smoke, G4 overfit, G5 timing (short trainings)
 python whistle.py train-vae --experiment V1               # main model, 300 epochs (--resume continues an interrupted run)
+# Colab A100: colab/train_V1_colab.ipynb (code bundle: python colab/make_colab_bundle.py)
 python whistle.py fit-gmm --experiment V1 --K 10000       # encode unrotated means, full-covariance EM (about 7 h at K = 10k)
 python whistle.py vae-eval recon --experiment V1          # Table 1
 python whistle.py fetch-eval-weights --approved           # Inception-V3 + VGG-16 weights (only after approval)

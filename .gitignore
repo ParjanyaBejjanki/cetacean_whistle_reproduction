@@ -57,3 +57,4 @@ web/media4k/*.mp4
 
 # Webpage: generated example excerpts and their results (python whistle.py export-web)
 web/data/
+colab/dist/

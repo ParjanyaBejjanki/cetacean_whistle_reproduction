@@ -77,7 +77,8 @@ init            = "glorot_uniform"   # [DECISION] Glorot-uniform weights, zero b
 critic_norm     = "layernorm_chw_per_channel_affine"   # [DECISION] = GroupNorm(1, C)
 
 [decisions.loss]
-recon           = "sse_sum"     # [DECISION] per-image sum of squared errors (Gaussian NLL up to a constant); matches Table 1's MSE convention
+recon           = "bce_sum"     # [DECISION, revised 2026-10-22 after gate G4] Bernoulli NLL (binary cross-entropy from logits), summed per image.
+                                # "sse_sum" (first choice) saturated the sigmoid on sparse images -> blank outputs (spec §1 item 18)
 kl              = "analytic_sum"  # [IMPLIED] KL(q||N(0,I)) summed over latent dims; batch mean
 z_samples       = 1             # [DECISION] one reparameterised sample per image
 adv_log         = "logsigmoid"  # [DECISION] -log D computed as -logsigmoid(logit): identical function, no log(0)
@@ -144,4 +145,7 @@ device          = "auto"
 log_every       = 200          # VAE steps between log lines
 keep_every      = 25           # keep a checkpoint every N epochs (last.pt is written every epoch)
 sample_every    = 10           # epochs between fixed reconstruction / prior sample grids
-prefetch        = 6            # batches prepared ahead by the loader thread
+prefetch        = 6            # batches prepared ahead by the loader thread (use 2 for very large batches: pinned RAM)
+micro_batch     = 0            # 0 = whole batch; N = accumulate gradients over chunks of N images (same update, less GPU memory)
+cudnn_benchmark = false        # true = cuDNN autotuning (same maths, faster kernels, not bit-deterministic)
+tf32            = false        # true = TF32 tensor cores on Ampere+ (slightly reduced internal precision; recorded in the run spec)
