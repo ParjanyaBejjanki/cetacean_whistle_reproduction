@@ -1,0 +1,42 @@
+{
+  "gate": "G2",
+  "criterion": "max |GPU - CPU| <= 1e-5 for x_hat, mu, logvar and critic output on 16 real images; all losses and gradients finite",
+  "passed": true,
+  "values": {
+    "max_abs_diff": {
+      "x_hat": 5.960464477539063e-08,
+      "mu": 6.05359673500061e-09,
+      "logvar": 5.3551048040390015e-09,
+      "critic": 2.980232238769531e-07
+    },
+    "critic_loss": 13.402740478515625,
+    "vae_loss": 11357.5205078125,
+    "d_real": 0.7021063566207886,
+    "d_fake": 0.3383966386318207,
+    "gp": 2.7532899379730225,
+    "gnorm": 1.6428824663162231,
+    "rec": 11356.4365234375,
+    "kl": 0.00010111612937180325,
+    "adv": 1.0835368633270264,
+    "critic_grads_finite": true,
+    "vae_grads_finite": true
+  },
+  "utc": "2026-11-02T18:06:05Z",
+  "config_effective_hash": "ffe17eb286b97d58a5dd4d9f0d13bc2a8721f64351e3acbfdb3aa0c4de4ebbc7",
+  "software": {
+    "python": "3.11.0",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "numpy": "2.4.4",
+    "scipy": "1.17.1",
+    "soundfile": "0.13.1",
+    "libsndfile": "1.2.2",
+    "git_commit": "914e6e2dbe61c62b1516c5874edbd7a5b086c6b3",
+    "git_uncommitted_code_changes": true,
+    "torch": "2.14.0+cu130",
+    "cuda_available": true,
+    "tf32_conv_allowed": false,
+    "tf32_matmul_allowed": false,
+    "deterministic_algorithms": true,
+    "cuda_device": "NVIDIA GeForce RTX 5060 Laptop GPU"
+  }
+}

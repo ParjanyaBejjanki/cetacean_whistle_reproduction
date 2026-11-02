@@ -15,8 +15,8 @@ from ..detector.ridgenet import resolve_device, set_deterministic, sha256_file
 from ..storage import software_versions
 from . import fid as fidmod
 from .conditional import acceptance_ratios, component_features, conditional_sample, weights_eq8, weights_eq10
-from .config import resolve
-from .data import WhistleImages
+from .config import main_k, resolve
+from .data import training_images
 from .features import FEATURES, contour_features, contour_vectors, satisfies
 from .gmm import GaussianMixtureEM
 from .losses import kl_std_normal, recon_sse
@@ -44,7 +44,7 @@ def _write(path: Path, obj: dict, force: bool = False) -> Path:
 def _ctx(cfg):
     set_deterministic()
     dev = resolve_device(cfg["train"]["device"])
-    return dev, WhistleImages(resolve(cfg["paths"]["dataset_dir"]))
+    return dev, training_images(cfg)
 
 
 def _image_batches(images, batch: int = 512):
@@ -167,7 +167,7 @@ def _nets(cfg, dev):
 
 def _real_features(cfg, images, nets, dev) -> dict:
     cache = resolve(cfg["paths"]["runs_dir"]) / "_eval_cache"
-    key = sha256_file(images.info_path)[:16]
+    key = images.cache_key()
     f = cache / f"real_{key}_inception_stats.npz"
     if not f.exists():
         cache.mkdir(parents=True, exist_ok=True)
@@ -210,7 +210,7 @@ def eval_generation(cfg, run_id: str, source: str = "gmm", K: int | None = None,
     nets = _nets(cfg, dev)
     real = _real_features(cfg, images, nets, dev)
     n = len(images)
-    gmm = load_gmm(cfg, run_id, K or cfg["paper"]["n_components"], tag) if source == "gmm" else None
+    gmm = load_gmm(cfg, run_id, K or main_k(cfg), tag) if source == "gmm" else None
     ldm = None
     if source == "ldm":
         from .ldm import LinearSchedule, UNet, ldm_sample
@@ -258,7 +258,7 @@ def eval_clustering(cfg, run_id: str, Ks: list[int], force: bool = False) -> Pat
 
 # ---------------------------------------------------------------- component analysis, Table 3, Fig. 12
 def analyze_components(cfg, run_id: str, K: int | None = None) -> Path:
-    K = K or cfg["paper"]["n_components"]
+    K = K or main_k(cfg)
     out = gmm_dir(cfg, run_id, K) / "component_features.npy"
     if out.exists():
         return out
@@ -275,7 +275,7 @@ def analyze_components(cfg, run_id: str, K: int | None = None) -> Path:
 
 def real_features(cfg, images, dev) -> np.ndarray:
     cache = resolve(cfg["paths"]["runs_dir"]) / "_eval_cache"
-    f = cache / f"real_whistle_features_{sha256_file(images.info_path)[:16]}.npy"
+    f = cache / f"real_whistle_features_{images.cache_key()}.npy"
     if not f.exists():
         cache.mkdir(parents=True, exist_ok=True)
         out = [contour_features(b.to(dev), cfg["paper"]["contour_threshold"])[0].cpu().numpy() for b in _image_batches(images, 2048)]
@@ -284,7 +284,7 @@ def real_features(cfg, images, dev) -> np.ndarray:
 
 
 def eval_conditional(cfg, run_id: str, K: int | None = None, force: bool = False) -> Path:
-    K = K or cfg["paper"]["n_components"]
+    K = K or main_k(cfg)
     d = _run(cfg, run_id)
     dev, images = _ctx(cfg)
     vae, _ = load_trained_vae(d, dev)
@@ -326,7 +326,7 @@ def eval_conditional(cfg, run_id: str, K: int | None = None, force: bool = False
 
 # ---------------------------------------------------------------- Table 6
 def eval_cost(cfg, run_id: str, K: int | None = None, force: bool = False) -> Path:
-    K = K or cfg["paper"]["n_components"]
+    K = K or main_k(cfg)
     d = _run(cfg, run_id)
     dev = resolve_device(cfg["train"]["device"])
     vae, spec = load_trained_vae(d, dev)
@@ -364,7 +364,7 @@ def make_figures(cfg, run_id: str, K: int | None = None) -> Path:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    K = K or cfg["paper"]["n_components"]
+    K = K or main_k(cfg)
     d = _run(cfg, run_id)
     out = d / "figures"
     out.mkdir(exist_ok=True)

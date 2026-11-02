@@ -9,8 +9,9 @@ Preprocessing implements S1–S9 of `resources/PREPROCESSING_SPECIFICATION.md` (
 from it is repeated here beyond what is needed to run and extend the code). The VAE-GMM training, GMM fitting and
 evaluation (`src/whistlepipe/vaegmm/`) follow `resources/TRAINING_SPECIFICATION.md` (see "VAE-GMM" below).
 
-**Status (2026-10-31):** the dataset is built (180,154 images from 8 encounters, see "Dataset record"). The main model
-V1 is training on Colab (started 2026-10-29); no VAE-GMM results exist yet.
+**Status (2026-11-02):** the dataset is built (180,154 images from 8 encounters, see "Dataset record"). The main model
+V1 will train on encounter 191 only (363 files, 63,490 images) for 150 epochs, with K = 3,000; the other encounters stay
+on disk, unused (`resources/TRAINING_SPECIFICATION.md` §2.1). No VAE-GMM results exist yet.
 
 > **Research-integrity statement.** The paper's S5 detector (its reference [31]) and S6 tracker (refs [32], [33]) are
 > unavailable. This project does **not** reproduce them. S5 and S6 here are **newly designed replacements** that satisfy the
@@ -266,12 +267,13 @@ that size, so only v2d's slowdown is clearly real.
 
 ## VAE-GMM (training, GMM, evaluation)
 Authoritative: `resources/TRAINING_SPECIFICATION.md` (discrepancy report, corrected specification, decisions, deviations,
-gates); configuration `configs/vaegmm.toml` (its `[paper]` section is locked in `vaegmm/config.py`). Only deviation from a
-stated paper value: the batch size on one GPU (paper 7 x 128 = 896) with learning rates scaled linearly, lr x B / 896.
-* **Main run V1** (Colab A100 80 GB, started 2026-10-29): **B = 5376, lr 6e-3 (VAE) / 1.2e-3 (critic)**, 34 steps per epoch,
-  about 6 min per epoch (about 30 h for 300 epochs). It also uses cuDNN autotuning (same maths, not bit-deterministic; spec §3.9).
-  On a 40 GB A100 the notebook picks B = 2688 (3e-3 / 6e-4); its fallback run `V1_L64_b1e-4_critic_B896` uses the paper's
-  batch and learning rates (no deviation).
+gates); configuration `configs/vaegmm.toml` (its `[paper]` section is locked in `vaegmm/config.py`). Deviations from
+stated paper values: the batch size on one GPU (paper 7 x 128 = 896) with learning rates scaled linearly, lr x B / 896, and
+the reduced scope below (spec §2.1).
+* **Main run V1** (Colab A100 80 GB): encounter 191 only, 150 epochs, **B = 5772, lr 6.442e-3 (VAE) / 1.288e-3 (critic)**, 11 steps
+  per epoch, projected about 5.3 h. It also uses cuDNN autotuning (same maths, not bit-deterministic; spec §3.9). GMM at K = 3,000.
+  Its fallback run `V1_L64_b1e-4_critic_E191_B896` uses the paper's batch and learning rates. The earlier all-data run
+  `V1_L64_b1e-4_critic` (B = 5376) stopped at epoch 7 and is not used.
 * **Laptop gates and the `configs/vaegmm.toml` default:** B = 128, 1.4286e-4 / 2.8571e-5.
 
 Every run's actual values are in its `train_info.json` (`spec`, `deviations`, `runtime`).
@@ -279,9 +281,9 @@ Every run's actual values are in its `train_info.json` (`spec`, `deviations`, `r
 python whistle.py vae-experiments                         # experiment matrix V1-V8 (spec §3.8)
 python whistle.py vae-gates                               # gates that do not train: G1 data, G2 numerics, G6 features
 python whistle.py vae-gates --gate all --allow-training   # + G3 smoke, G4 overfit, G5 timing (short trainings)
-python whistle.py train-vae --experiment V1               # main model, 300 epochs (--resume continues an interrupted run)
+python whistle.py train-vae --experiment V1               # main model, 150 epochs on encounter 191 (--resume continues an interrupted run)
 # Colab A100: colab/train_V1_colab.ipynb (code bundle: python colab/make_colab_bundle.py)
-python whistle.py fit-gmm --experiment V1 --K 10000       # encode unrotated means, full-covariance EM (about 7 h at K = 10k)
+python whistle.py fit-gmm --experiment V1 --K 3000        # encode unrotated means, full-covariance EM (at most about 45 min)
 python whistle.py vae-eval recon --experiment V1          # Table 1
 python whistle.py fetch-eval-weights --approved           # Inception-V3 + VGG-16 weights (only after approval)
 python whistle.py vae-eval gen --experiment V1 --K 10000  # Table 2 (FID1, FID2, P/R/F1); --source prior for Table 4 (1)
@@ -316,9 +318,9 @@ The trained files are read from where the training commands write them; nothing 
 
 | File | Written by | Enables |
 |---|---|---|
-| `models/vaegmm/V1_L64_b1e-4_critic/checkpoints/last.pt` | `train-vae --experiment V1` (every epoch; equals `final.pt` at the end) | recreation (decoder of the encoder mean); a mid-training checkpoint is labelled as such |
-| `models/vaegmm/V1_L64_b1e-4_critic/gmm_K10000/gmm.npz` + `gmm.json` | `fit-gmm --experiment V1` | whistle type (eqs. 11-12), new whistles of that type, generation |
-| `models/vaegmm/V1_L64_b1e-4_critic/gmm_K10000/component_features.npy` | `vae-eval components --experiment V1` | generation under a Table 3 condition (eqs. 9-10 + rejection) |
+| `models/vaegmm/V1_L64_b1e-4_critic_E191/checkpoints/last.pt` | `train-vae --experiment V1` (every epoch; equals `final.pt` at the end) | recreation (decoder of the encoder mean); a mid-training checkpoint is labelled as such |
+| `models/vaegmm/V1_L64_b1e-4_critic_E191/gmm_K3000/gmm.npz` + `gmm.json` | `fit-gmm --experiment V1` | whistle type (eqs. 11-12), new whistles of that type, generation |
+| `models/vaegmm/V1_L64_b1e-4_critic_E191/gmm_K3000/component_features.npy` | `vae-eval components --experiment V1` | generation under a Table 3 condition (eqs. 9-10 + rejection) |
 
 Until the files exist, the input side (detection, images, the recording and its contour as sound) works and the model
 panels say what is missing. With the VAE but no GMM, "new whistles" come from the encoder's own spread (a standard VAE

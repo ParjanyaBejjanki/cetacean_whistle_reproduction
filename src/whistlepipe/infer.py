@@ -147,11 +147,14 @@ def load_model(icfg: Cfg, vcfg: Cfg, device: torch.device) -> Model:
     return m
 
 
-def training_centre_frequencies(pcfg: Cfg) -> np.ndarray:
-    """Centre frequencies (Hz) of every training whistle, from preprocessed/encounter_*/images.csv."""
+def training_centre_frequencies(pcfg: Cfg, encounters: list | None = None) -> np.ndarray:
+    """Centre frequencies (Hz) of every training whistle, from images.csv of the selected encounters (default: all)."""
     d = resolve(pcfg["paths"]["dataset_dir"])
     out = []
+    wanted = None if encounters is None else {f"encounter_{e}" for e in encounters}
     for f in sorted(d.glob("encounter_*/images.csv")):
+        if wanted is not None and f.parent.name not in wanted:
+            continue
         with open(f, encoding="utf-8") as fh:
             out += [float(r["center_hz"]) for r in csv.DictReader(fh)]
     return np.asarray(out, dtype=np.float64)
@@ -329,7 +332,7 @@ class Engine:
         self.device = resolve_device(device or self.icfg["model"]["device"])
         self.detector = RidgeDetector.from_checkpoint(resolve(self.pcfg["decisions"]["s5"]["checkpoint"]), self.pcfg, str(self.device))
         self.model = load_model(self.icfg, self.vcfg, self.device)
-        self.fc_pool = training_centre_frequencies(self.pcfg)
+        self.fc_pool = training_centre_frequencies(self.pcfg, self.vcfg["deviations"].get("encounters"))
         self.processing_hash = processing_hash(self.pcfg)
         info = resolve(self.pcfg["paths"]["dataset_dir"]) / "dataset_info.json"
         self.training_hash = json.loads(info.read_text(encoding="utf-8")).get("processing_config_hash") if info.exists() else None

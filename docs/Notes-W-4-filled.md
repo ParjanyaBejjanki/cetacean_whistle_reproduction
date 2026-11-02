@@ -22,6 +22,8 @@
 
 **Rule followed:** nothing is reported as run unless its output file exists (`resources/TRAINING_SPECIFICATION.md` §5).
 
+> **Scope change (2026-11-02):** after this logbook was filled in, training moved to encounter 191 only (363 files, 63,490 images), 150 epochs, K = 3,000. This logbook records Week 4 as it was; see `resources/TRAINING_SPECIFICATION.md` §2.1.
+
 > **V1 run state is as of the local copy.** Google Drive (`G:`) is not mounted on this machine. The V1 numbers therefore come from `models/vaegmm/V1_L64_b1e-4_critic/`: the epoch-6 checkpoint, plus a log that ends at epoch 7, step 212, on 2026-10-29. If the run was resumed on Colab after that, newer logs exist on Drive.
 
 ---

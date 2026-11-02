@@ -1,7 +1,7 @@
 # TRAINING AND EVALUATION SPECIFICATION — VAE-GMM
 
 **Project:** reproduction of *"A Generative Model for Cetacean Whistles Using Variational Autoencoder and Mixture of Gaussians"* (Park et al., IEEE Access 14, 2026, pp. 27877–27894).
-**Created:** 2026-10-22. **Revised:** 2026-10-28 (items 18–19, revised G3 criterion, G4 outcome, Colab batch sizes) and 2026-10-31 (main-run figures in §3.3, status §3.10). **Scope:** everything after preprocessing. The dataset is fixed and is **not** re-processed.
+**Created:** 2026-10-22. **Revised:** 2026-11-02 (encounter 191 only, 150 epochs, K = 3,000: §2.1), 2026-10-28 (items 18–19, revised G3 criterion, G4 outcome, Colab batch sizes) and 2026-10-31 (main-run figures in §3.3, status §3.10). **Scope:** everything after preprocessing. The dataset is fixed and is **not** re-processed.
 **Companion files:** `configs/vaegmm.toml` (the `[paper]` section is locked by `src/whistlepipe/vaegmm/config.py`) and `src/whistlepipe/vaegmm/`.
 
 ## 0. Conventions
@@ -42,7 +42,7 @@ This audit covers the plan of 2026-10-21 and the brief of 2026-10-22, checked ag
 | 13 | Architecture check | — | Table 6: VAE-GMM generator 368k params, 557M FLOPs | Tables 7–8 with "same" padding give exactly 368,097 params and 557.3 MFLOPs (2 × MAC, transposed conv counted at output size). This is a unit test |
 | 14 | Table 9 (LDM) | — | ConvBlock 3 "3/2/256" yet output stays 2×2; ConvBlock 5 "3/1/128" yet output 8×8×64; listed layers give 1.96M conv params / 87.4 MFLOPs vs Table 6's 2.9M / 95.02M per step | **[CONFLICT]**, documented; resolved when the baselines are built (§3.8). About 0.9M params sit in layers Table 9 does not list (time embedding, GroupNorm) |
 | 15 | F1 consistency | — | F1 = 2PR/(P+R) reproduces every printed F1 in Tables 2–5; WGAN-GP row: 70.69 computed vs 70.70 printed (rounding) | No action |
-| 16 | GMM data per component | — | 228,673 / 10,000 = 22.9 images per component in the paper; ours 180,154 / 10,000 = 18.0. A full 64-D sample covariance needs ≥ 65 points | Regularisation is **required** but unstated **[DECISION]** (§3.5) |
+| 16 | GMM data per component | — | 228,673 / 10,000 = 22.9 images per component in the paper; ours 180,154 / 10,000 = 18.0, and 63,490 / 3,000 = 21.2 for the encounter-191 run (§2.1). A full 64-D sample covariance needs ≥ 65 points | Regularisation is **required** but unstated **[DECISION]** (§3.5) |
 | 17 | Table 4 row 2 = Table 5 row "WGAN-GP" | — | Identical numbers (13.82 / 202.51 / 61.47 / 83.17 / 70.70) | Same model, trained once |
 | 18 | Reconstruction loss (added 2026-10-22, after gate G4 failed) | squared error per image | −log p(x\|z), form not stated | Squared error on the sigmoid output saturated on the sparse images: whistle-pixel logits ≈ −40, sigmoid′ ≈ 1e-8, blank outputs, at both learning rates tried. **Bernoulli NLL (binary cross-entropy from logits)** does not saturate and learned in a diagnostic run [DECISION, revised] |
 | 19 | Gate G3 criterion (added 2026-10-22) | bit-identical resume | — | Two identical GPU runs with the critic already differ by ≈ 1e-6 after one step (kernel-level float effects; runs without the critic are bit-identical). Criterion revised after this observation: exact restore of the checkpoint, and a resumed-vs-uninterrupted difference ≤ 10 × the run-to-run difference |
@@ -53,7 +53,7 @@ This audit covers the plan of 2026-10-21 and the brief of 2026-10-22, checked ag
 - Row 0 = highest frequency, 0 Hz on row 63; 93.75 Hz per row, 5.333 ms per column.
 - Built with processing config `78f1bb1b…` and detector `ridgenet-v2c` (`c00d66a0…`).
 
-Files are opened read-only (memory-mapped). There is no filtering, and the paper describes none.
+Files are opened read-only (memory-mapped). The paper describes no filtering, and none is applied inside the selected encounters. The training set is selected by `[deviations].encounters` (§2.1).
 - The 37 % of images shorter than 30 frames stay in.
 - So do the 56 detector-background files.
 
@@ -61,6 +61,25 @@ There is no train/test split: the paper evaluates against "the training data" (A
 - the `dataset_info.json` SHA-256 and the processing/detector hashes;
 - the SHA-256 of each `images.npy`;
 - the git commit, plus SHA-256 of every source file used.
+
+### 2.1 Reduced scope of the main run (owner decision, 2026-11-02) [DEVIATION]
+
+The goal is fewer Colab compute units, with one training run only.
+
+| Item | Paper | Earlier plan | This run |
+|---|---|---|---|
+| Training data | 228,673 images from 2,486 files | 180,154 images, 8 encounters, 1,415 files | **Encounter 191 only: 63,490 images, 363 files** |
+| Epochs | 300 | 300 | **150** |
+| Batch | 896 | 5376 | **5772** on an 80 GB A100: 11 steps per epoch, 1,650 VAE + 4,950 critic updates |
+| Learning rates (VAE / critic) | 1e-3 / 2e-4 | 6e-3 / 1.2e-3 | **6.442e-3 / 1.288e-3** (lr × B / 896) |
+| K | 10,000 | 10,000 | **3,000**: 21.2 images per component (paper 22.9). Chosen by this ratio, not by the Fig. 11 scores |
+
+- **Excluded data:** the other seven encounters stay in `preprocessed/`, unchanged. Runs do not open them.
+- **What results describe:** one session of about 6 hours (29–30 Sep 2017). The real reference set for all metrics is the same 63,490 images.
+- **Rec reference levels** (20k rotated sample, encounter 191): 421.9 = always the average image, 141.6 = a perfect reconstruction. All-data levels were 449.2 and 151.9.
+- **Check at epoch 40** (440 updates) [DECISION]: rec below about 395, and samples no longer all the same blob.
+- **Projected cost:** about 5.3 h and 62 compute units, scaled from 10.75 s per step at B = 5376. Notebook cell 8 measures it.
+- **Gates on encounter 191 (laptop, 2026-11-02):** G1, G2, G3 and G6 passed. G5 is replaced by notebook cell 8 on the A100. G4 was not rerun, so its 2026-10-28 result and owner acceptance stand: it tests the model and loss at B = 128, and neither changed.
 
 ## 3. Corrected specification
 
@@ -124,9 +143,9 @@ The only numerical safeguard is computing log D as `logsigmoid(a)`, an identical
 | Critic Adam β₁, β₂ | 0, 0.9 [EXPLICIT] | 0, 0.9 |
 | VAE Adam β₁, β₂, ε | not stated | 0.9, 0.999, 1e-8 [DECISION] (Adam defaults) |
 | LR schedule | not stated | constant [DECISION] |
-| Batch | 128/GPU × 7 = 896 [EXPLICIT] | **One GPU. Main run on a Colab A100: B = 2688 (40 GB) or 5376 (80 GB) [DEVIATION]; fallback B = 896 with the paper's learning rates (no deviation). Laptop gates: B = 128.** Set per run by override (`colab/train_V1_colab.ipynb`), recorded in `train_info.json`. Optional gradient accumulation (`train.micro_batch`) gives the same update with less memory |
+| Batch | 128/GPU × 7 = 896 [EXPLICIT] | **One GPU. Main run on a Colab 80 GB A100: B = 5772 [DEVIATION, §2.1] (earlier all-data setting: 2688 on 40 GB, 5376 on 80 GB); fallback B = 896 with the paper's learning rates (no deviation). Laptop gates: B = 128.** Set per run by override (`colab/train_V1_colab.ipynb`), recorded in `train_info.json`. Optional gradient accumulation (`train.micro_batch`) gives the same update with less memory |
 | Critic steps | 3 per VAE iteration [EXPLICIT] | 3; critic steps precede each VAE step, each on a **fresh** real batch ([49] Alg. 1) [DECISION] |
-| Epochs | 300 [EXPLICIT] | 300. Steps per epoch = ⌈180,154 / B⌉: 1,408 at B = 128 (last batch 58 images; 422,400 VAE + 1,267,200 critic updates), 202 at 896, 68 at 2688, **34 at 5376 (V1 main run: 10,200 VAE + 30,600 critic updates)** |
+| Epochs | 300 [EXPLICIT] | **150 [DEVIATION, §2.1]: 11 steps per epoch at B = 5772, 1,650 VAE + 4,950 critic updates.** Earlier all-data plan: 300. Steps per epoch = ⌈180,154 / B⌉: 1,408 at B = 128 (last batch 58 images; 422,400 VAE + 1,267,200 critic updates), 202 at 896, 68 at 2688, **34 at 5376 (V1 main run: 10,200 VAE + 30,600 critic updates)** |
 | Model kept | not stated | final epoch; no early stopping or model selection [DECISION] |
 | Numerics | not stated | fp32, TF32 off, fixed seeds (repo policy) [DECISION]. Deterministic algorithms in the gates and by default; the **V1 main run uses `train.cudnn_benchmark = true`** (§3.9), so it is not bit-deterministic (`train_info.json` records `deterministic_algorithms: false`) |
 
@@ -159,7 +178,7 @@ The linear values are **experimental starting values**. They are kept unless the
 
 | Item | Choice |
 |---|---|
-| Input | μ(x) of all 180,154 images, **unrotated** (rotation is a training-time augmentation; Fig. 7 samples are unrotated), final VAE checkpoint |
+| Input | μ(x) of all images of the selected encounters (63,490 for encounter 191), **unrotated** (rotation is a training-time augmentation; Fig. 7 samples are unrotated), final VAE checkpoint |
 | Initialisation | k-means++ seeding on the latent means (seeded) → hard assignment to the nearest seed → one M-step |
 | Stopping | \|ℓ_t − ℓ_{t−1}\| ≤ 1e-8·\|ℓ_t\|, ℓ = mean log-likelihood per point accumulated in fp64 ([35] §9.2.2), or 1,500 iterations. Because 1e-8 is below fp32 per-point resolution, runs are expected to approach 1,500 iterations; the outcome is recorded |
 | Covariance regularisation | Σ_k ← Σ_k + r·I at every M-step, r = 1e-6 × mean per-dimension variance of the latent means (scale-relative; needed by item 16). Sensitivity at ×0.1 / ×10 is reported as a robustness check, not used for selection |
@@ -195,7 +214,7 @@ Unit conversion [IMPLIED, Table 3 errors]: 5.333 ms per sample, 93.75 Hz per bin
 | Paper | Grid | Procedure |
 |---|---|---|
 | **Table 1** | L ∈ {32, 64, 128, 256}, β = 1e-4, with critic; no GMM | Reconstructions of the training images (unrotated, z = μ [DECISION]). MSE = mean per-image SSE; PSNR = 10·log10(16384/MSE) [IMPLIED]; SSIM with a Gaussian window σ = 1.5, K = (0.01, 0.03), range 1 [DECISION]; KL = mean per-image KL summed over dims |
-| **Table 2** | L = 64: K ∈ {1k, 5k, 10k, 15k} at β = 1e-4; β ∈ {1e-2, 1e-4, 1e-6} at K = 10k | **FID₁:** real and generated binarised at 0.1. **FID₂:** unthresholded. Inception-V3 2048-d final-pool features; bicubic 128→224; channel ×3 [EXPLICIT]; torchvision ImageNet weights, ImageNet normalisation, bicubic with the MATLAB `imresize` kernel (Keys a = −0.5, symmetric boundary, no clamping; PyTorch's bicubic uses a = −0.75) [DECISION]. **P/R** per [47] (VGG-16 fc2, k = 3); F1 = 2PR/(P+R). Reference set = all training images; N_gen = N_real = 180,154, fixed seeds [DECISION] |
+| **Table 2** | L = 64: K ∈ {1k, 5k, 10k, 15k} at β = 1e-4; β ∈ {1e-2, 1e-4, 1e-6} at K = 10k | **FID₁:** real and generated binarised at 0.1. **FID₂:** unthresholded. Inception-V3 2048-d final-pool features; bicubic 128→224; channel ×3 [EXPLICIT]; torchvision ImageNet weights, ImageNet normalisation, bicubic with the MATLAB `imresize` kernel (Keys a = −0.5, symmetric boundary, no clamping; PyTorch's bicubic uses a = −0.75) [DECISION]. **P/R** per [47] (VGG-16 fc2, k = 3); F1 = 2PR/(P+R). Reference set = all training images; N_gen = N_real = the training set size (63,490 for encounter 191), fixed seeds [DECISION] |
 | **Fig. 11** | K ∈ {1k, 3k, 5k, 7k, 10k, 12k, 15k}, L = 64, β = 1e-4 | Silhouette (exact, Euclidean, latent means), Davies–Bouldin, Calinski–Harabasz on the MAP labels (eq. 12) of all training latents [DECISION: latent-mean space] |
 | **Table 3** | L = 64, K = 10k, β = 1e-4 [EXPLICIT]; 13 conditions | X = all real images meeting the condition (N = \|X\|); Y = N conditional samples. W₁ by eq. 13 on the conditioned feature (converted to ms/Hz); FFD = Fréchet distance of the 7-D features; P/R/F1 on the 7-D features with k = 3, raw units [DECISION] |
 | **Fig. 12** | same | 13×13 matrix Z(i, j) = ln FFD(real condition i, generated condition j); rows = real, as in the figure |
@@ -246,15 +265,15 @@ Sweeps never start before V1 has finished and been evaluated.
 | WhistleGAN and WGAN-GP baselines | **not implemented**: the paper gives no generator architecture (only Table 6 sizes). Needs either ref. [20] for WhistleGAN or an owner-approved [DECISION] design |
 | Feature-network weights | download code present (`fetch-eval-weights --approved`); **not downloaded** (approval pending) |
 | Measured cost | EM at K = 10k on 180,154 × 64 latents: ≈ 17 s per iteration on the RTX 5060 Laptop (memory-bound), so ≤ ≈ 7 h per 1,500-iteration fit. VAE training: gate G5 measured 0.56 s per iteration at B = 128 with the critic on the laptop (66 h projected for 300 epochs); the V1 main run takes about 6 min per epoch on a Colab A100 80 GB (≈ 30 h) |
-| Gates (laptop, B = 128) | G1, G2, G5, G6 passed 2026-10-22; G3 passed 2026-10-28 with the revised criterion (item 19); G4 not met as measured and accepted by the project owner 2026-10-28 (§4) |
-| V1 main run | training on Colab since 2026-10-29 with B = 5376, lr 6e-3 / 1.2e-3 (`models/vaegmm/V1_L64_b1e-4_critic/train_info.json`). No GMM fit or evaluation result exists yet |
+| Gates (laptop, B = 128) | G1, G2, G5, G6 passed 2026-10-22; G3 passed 2026-10-28 with the revised criterion (item 19); G4 not met as measured and accepted by the project owner 2026-10-28 (§4); G1, G2, G3 and G6 passed again on encounter 191 on 2026-11-02 (§2.1) |
+| V1 main run | Not started for the encounter-191 scope (§2.1). The earlier all-data run stopped at epoch 7 (`models/vaegmm/V1_L64_b1e-4_critic/`) and is not used. No GMM fit or evaluation result exists yet |
 
 ## 4. Validation gates (all must pass before the main run)
 
 | Gate | Pre-declared pass criterion |
 |---|---|
 | G0 unit tests | `pytest` green. Covers: architecture shapes and Table 6 counts; KL closed form vs Monte Carlo; logsigmoid ≡ log∘sigmoid; gradient penalty by finite differences (float64); accumulation equivalence; Adam scale invariance; the rotation group; loader read-only behaviour and coverage; EM vs scikit-learn; features on synthetic contours; W₁ vs scipy; Fréchet vs analytic Gaussians; P/R on identical/disjoint sets; equation-level conditional weights |
-| G1 data | All 180,154 images finite, in [0, 1], max = 1; counts equal `dataset_info.json` |
+| G1 data | All selected images finite, in [0, 1], max = 1; counts equal `dataset_info.json` |
 | G2 numerics | GPU-vs-CPU forward parity of VAE and critic (max abs. diff ≤ 1e-5); finite losses and gradients on real batches |
 | G3 smoke | 2 epochs on a 2,048-image subset. (a) A trainer restored from the epoch-1 checkpoint equals it bit-identically; (b) max \|resumed − uninterrupted\| ≤ 10 × max \|uninterrupted − repeated uninterrupted\| (bit-identical when the repeat is). Revised 2026-10-22 (item 19) |
 | G4 overfit | Full objective, batch 128, the run's learning rates, 256 fixed images. Within 3,000 VAE steps the reconstruction SSE (z = μ, unrotated) drops to ≤ 0.3 × the SSE of the all-zero image; all losses finite |

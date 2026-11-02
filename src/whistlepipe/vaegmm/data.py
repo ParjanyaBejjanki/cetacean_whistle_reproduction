@@ -1,7 +1,8 @@
 """Training data: the fixed preprocessed dataset, opened READ-ONLY (memory-mapped), plus deterministic batch streams.
 
-180,154 images (11.8 GB float32) do not fit comfortably in RAM next to training, so batches are gathered from the
-memory-mapped per-encounter arrays by a background thread. Nothing in preprocessed/ is ever written.
+The training set is the encounters selected by [deviations].encounters (encounter 191: 63,490 images, 4.2 GB float32; all
+8 encounters: 180,154 images, 11.8 GB). Batches are gathered from the memory-mapped per-encounter arrays by a background
+thread. Nothing in preprocessed/ is ever written, and unselected encounters are not opened.
 """
 from __future__ import annotations
 
@@ -15,16 +16,23 @@ import numpy as np
 import torch
 
 from ..detector.ridgenet import sha256_file
+from .config import resolve
 
 
 class WhistleImages:
-    """All encounter arrays of preprocessed/ behind one global index (encounter order = sorted folder name)."""
+    """The selected encounter arrays of preprocessed/ (default: all) behind one global index (encounter order = sorted folder name)."""
 
-    def __init__(self, dataset_dir: Path):
+    def __init__(self, dataset_dir: Path, encounters: list | None = None):
         self.dir = Path(dataset_dir)
         self.info_path = self.dir / "dataset_info.json"
         self.info = json.loads(self.info_path.read_text(encoding="utf-8"))
         self.enc_dirs = sorted(p for p in self.dir.glob("encounter_*") if p.is_dir() and not p.name.endswith(".partial"))
+        if encounters is not None:
+            wanted = {f"encounter_{e}" for e in encounters}
+            missing = wanted - {d.name for d in self.enc_dirs}
+            if missing:
+                raise ValueError(f"selected encounters not found in {self.dir}: {sorted(missing)}")
+            self.enc_dirs = [d for d in self.enc_dirs if d.name in wanted]
         self.arrays = [np.load(d / "images.npy", mmap_mode="r") for d in self.enc_dirs]
         for d, a in zip(self.enc_dirs, self.arrays):
             if a.dtype != np.float32 or a.shape[1:] != (128, 128):
@@ -34,7 +42,9 @@ class WhistleImages:
                 raise ValueError(f"{d}/images.npy has {a.shape[0]} images, dataset_info.json says {expected}")
         self.counts = np.array([a.shape[0] for a in self.arrays], dtype=np.int64)
         self.offsets = np.concatenate([[0], np.cumsum(self.counts)])
-        if int(self.offsets[-1]) != self.info["totals"]["images"]:
+        self.expected_images = (self.info["totals"]["images"] if encounters is None
+                                else sum(self.info["encounters"][d.name]["n_images"] for d in self.enc_dirs))
+        if int(self.offsets[-1]) != self.expected_images:
             raise ValueError("total image count differs from dataset_info.json")
 
     def __len__(self) -> int:
@@ -52,9 +62,14 @@ class WhistleImages:
             out[sel[order]] = self.arrays[e][local[order]]
         return out
 
+    def cache_key(self) -> str:
+        """Key of files cached from these images: dataset_info.json hash + the encounters selected."""
+        names = ",".join(d.name for d in self.enc_dirs)
+        return hashlib.sha256(f"{sha256_file(self.info_path)}|{names}".encode()).hexdigest()[:16]
+
     def lineage(self, cache_path: Path | None = None) -> dict:
         """dataset identity: dataset_info.json hash + processing/detector hashes + SHA-256 of every images.npy.
-        Array hashes are cached by (path, size, mtime) because hashing 11.8 GB takes about a minute."""
+        Array hashes are cached by (path, size, mtime) because hashing all 11.8 GB takes about a minute."""
         cache = {}
         if cache_path and cache_path.exists():
             cache = json.loads(cache_path.read_text(encoding="utf-8"))
@@ -72,7 +87,7 @@ class WhistleImages:
         return {"dataset_dir": str(self.dir), "dataset_info_sha256": sha256_file(self.info_path),
                 "processing_config_hash": self.info.get("processing_config_hash"),
                 "detector_checkpoint_sha256": self.info.get("detector", {}).get("checkpoint_sha256"),
-                "n_images": len(self), "arrays": arrays}
+                "encounters": [d.name for d in self.enc_dirs], "n_images": len(self), "arrays": arrays}
 
     def scan(self, chunk: int = 2048) -> dict:
         """Integrity scan of every image: finite, within [0, 1], per-image max == 1 (dataset_info claim)."""
@@ -89,6 +104,11 @@ class WhistleImages:
                 gmin, gmax = min(gmin, float(mn.min())), max(gmax, float(mx.max()))
         return {"n_images": len(self), "n_non_finite": n_bad_finite, "n_out_of_range": n_bad_range,
                 "n_max_not_1": n_max_not_1, "global_min": gmin, "global_max": gmax}
+
+
+def training_images(cfg) -> WhistleImages:
+    """The images of a run: the encounters of [deviations].encounters (all when the key is absent)."""
+    return WhistleImages(resolve(cfg["paths"]["dataset_dir"]), cfg["deviations"].get("encounters"))
 
 
 class SubsetImages:

@@ -305,6 +305,38 @@ def test_loader_rejects_count_mismatch(tmp_path):
         WhistleImages(root)
 
 
+def test_loader_selects_encounters_and_leaves_the_others_unopened(tmp_path):
+    root = make_fake_dataset(tmp_path / "pre")
+    im = WhistleImages(root, ["002"])
+    assert len(im) == 12 and im.expected_images == 12 and [d.name for d in im.enc_dirs] == ["encounter_002"]
+    assert np.array_equal(im.gather(np.array([3])), np.load(root / "encounter_002" / "images.npy")[[3]])
+    lineage = im.lineage()
+    assert lineage["encounters"] == ["encounter_002"] and list(lineage["arrays"]) == ["encounter_002"]
+
+
+def test_loader_rejects_a_missing_selected_encounter(tmp_path):
+    with pytest.raises(ValueError, match="encounter_999"):
+        WhistleImages(make_fake_dataset(tmp_path / "pre"), ["001", "999"])
+
+
+def test_cache_key_depends_on_the_selected_encounters(tmp_path):
+    root = make_fake_dataset(tmp_path / "pre")
+    keys = [WhistleImages(root).cache_key(), WhistleImages(root, ["001"]).cache_key(), WhistleImages(root, ["002"]).cache_key()]
+    assert len(set(keys)) == 3 and keys[1] == WhistleImages(root, ["001"]).cache_key()
+
+
+def test_config_deviations_select_the_data_epochs_and_k(vcfg):
+    from whistlepipe.vaegmm.config import main_k
+
+    assert vcfg["deviations"]["encounters"] == [191]
+    assert run_spec(vcfg, "t")["epochs"] == 150 and run_spec(vcfg, "t", epochs=2)["epochs"] == 2 and main_k(vcfg) == 3000
+    assert vcfg["paper"]["epochs"] == 300 and vcfg["paper"]["n_components"] == 10000          # the paper's values stay locked
+    d = vcfg.to_dict()
+    for key in ("encounters", "epochs", "n_components"):
+        del d["deviations"][key]
+    assert run_spec(d, "t")["epochs"] == 300 and main_k(d) == 10000
+
+
 # ---------------------------------------------------------------- training mechanics (CPU, tiny)
 def test_trainer_step_updates_both_networks_and_keeps_critic_frozen_in_vae_step(vcfg, tmp_path):
     im = WhistleImages(make_fake_dataset(tmp_path / "pre"))

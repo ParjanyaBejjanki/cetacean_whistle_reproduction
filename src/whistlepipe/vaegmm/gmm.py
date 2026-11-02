@@ -1,6 +1,6 @@
 """Full-covariance Gaussian mixture fitted by standard EM (specification §3.5; paper §II-E, eq. 6, App. B).
 
-Scale: N = 180,154 latents, D = 64, K up to 15,000. The N x K responsibility matrix (14 GB in float64) never exists:
+Scale: N up to 180,154 latents, D = 64, K up to 15,000. The N x K responsibility matrix (14 GB in float64) never exists:
 the E- and M-steps run over chunks of points x chunks of components on the GPU.
 
 Numerics

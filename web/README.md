@@ -24,9 +24,9 @@ Both servers answer HTTP Range requests, which the browser needs to seek inside 
 ## The model files
 
 Nothing in `web/` changes after training. The server reads the files from where the training commands write them:
-`models/vaegmm/V1_L64_b1e-4_critic/checkpoints/last.pt` (`train-vae --experiment V1`, written every epoch; the page
+`models/vaegmm/V1_L64_b1e-4_critic_E191/checkpoints/last.pt` (`train-vae --experiment V1`, written every epoch; the page
 says so while it is a mid-training checkpoint) and
-`.../gmm_K10000/gmm.npz` (`fit-gmm --experiment V1`), optionally `.../gmm_K10000/component_features.npy`
+`.../gmm_K3000/gmm.npz` (`fit-gmm --experiment V1`), optionally `.../gmm_K3000/component_features.npy`
 (`vae-eval components`) for the Table 3 conditions. `python whistle.py model-status` checks them; a running server
 picks them up on restart or `POST /api/reload-model`. Re-run `python whistle.py export-web` afterwards so the
 pre-rendered examples include the model's output too.

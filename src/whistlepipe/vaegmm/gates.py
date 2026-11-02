@@ -1,11 +1,11 @@
 """Validation gates G1-G6 (specification §4). Criteria are fixed here BEFORE any result exists.
 Each gate writes models/vaegmm/_gates/<gate>_<UTC time>.json with ``passed`` and the measured values.
 
-G1 data      read-only integrity scan of all 180,154 images                         (no training)
+G1 data      read-only integrity scan of the selected images                        (no training)
 G2 numerics  GPU-vs-CPU forward parity, finite losses/gradients on real batches     (no training: one step on a copy)
 G3 smoke     2 epochs on 2,048 images; epoch-boundary resume is bit-identical      (TRAINING)
 G4 overfit   full objective on 256 images reaches SSE <= 0.3 x all-zero SSE        (TRAINING)
-G5 timing    20 warm-up + 200 measured iterations on the full data                 (TRAINING)
+G5 timing    20 warm-up + 200 measured iterations on the selected data             (TRAINING)
 G6 features  whistle features of real images agree with their true contours        (no training)
 """
 from __future__ import annotations
@@ -21,7 +21,7 @@ import torch
 from ..detector.ridgenet import resolve_device, set_deterministic
 from ..storage import software_versions
 from .config import resolve
-from .data import Prefetcher, SubsetImages, WhistleImages, epoch_plan
+from .data import Prefetcher, SubsetImages, WhistleImages, epoch_plan, training_images
 from .features import contour_features
 from .losses import critic_loss, vae_loss
 from .models import VAE, Critic
@@ -35,7 +35,7 @@ CRITERIA = {
            "(bit-identical when the repeat is). Revised 2026-10-22: GPU training with the critic is not bit-reproducible "
            "even without resume (spec §4)"),
     "G4": "256 images, <= 3,000 VAE steps: SSE(z = mu, unrotated) <= 0.3 x SSE of the all-zero image; finite",
-    "G5": "recorded only: s/iteration, data-wait fraction, peak GPU memory, projected 300-epoch hours",
+    "G5": "recorded only: s/iteration, data-wait fraction, peak GPU memory, projected hours for the run's epochs",
     "G6": ">= 95 % of 4,000 real images have |L - n_frames| <= 2 and >= 95 % have |df - bandwidth/93.75 Hz| <= 1.5 bins",
 }
 
@@ -57,13 +57,13 @@ def _record(cfg, gate: str, passed: bool, values: dict) -> dict:
 
 
 def _images(cfg) -> WhistleImages:
-    return WhistleImages(resolve(cfg["paths"]["dataset_dir"]))
+    return training_images(cfg)
 
 
 def gate_data(cfg) -> dict:
     im = _images(cfg)
     s = im.scan()
-    ok = s["n_non_finite"] == 0 and s["n_out_of_range"] == 0 and s["n_max_not_1"] == 0 and s["n_images"] == im.info["totals"]["images"]
+    ok = s["n_non_finite"] == 0 and s["n_out_of_range"] == 0 and s["n_max_not_1"] == 0 and s["n_images"] == im.expected_images
     return _record(cfg, "G1", ok, s)
 
 
@@ -224,7 +224,7 @@ def gate_timing(cfg, warmup: int = 20, measured: int = 200) -> dict:
         steps_epoch = -(-len(im) // tr.spec["batch_size"])
         vals[name] = {"s_per_iteration": spi, "data_wait_fraction": (pf.wait_s - wait0) / el,
                       "peak_gpu_mem_gb": torch.cuda.max_memory_allocated() / 1e9 if dev.type == "cuda" else None,
-                      "steps_per_epoch": steps_epoch, "projected_hours_300_epochs": spi * steps_epoch * 300 / 3600,
+                      "steps_per_epoch": steps_epoch, "epochs": tr.spec["epochs"], "projected_hours": spi * steps_epoch * tr.spec["epochs"] / 3600,
                       "last_losses": {k: float(v) for k, v in r.items()}}
         print(json.dumps({name: vals[name]}), flush=True)
         pf.close()

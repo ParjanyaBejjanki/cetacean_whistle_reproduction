@@ -3,11 +3,11 @@ from __future__ import annotations
 
 import json
 
-from .config import load_vaegmm_config, resolve
+from .config import load_vaegmm_config, main_k, resolve
 
 # Experiment matrix of specification §3.8: identical configurations are trained once and reused.
 EXPERIMENTS = {
-    "V1": {"run_id": "V1_L64_b1e-4_critic", "latent_dim": 64, "beta": 1e-4, "use_critic": True, "for": "main; Tables 1-6, Figs. 7-12"},
+    "V1": {"run_id": "V1_L64_b1e-4_critic_E191", "latent_dim": 64, "beta": 1e-4, "use_critic": True, "for": "main; Tables 1-6, Figs. 7-12"},
     "V2": {"run_id": "V2_L32_b1e-4_critic", "latent_dim": 32, "beta": 1e-4, "use_critic": True, "for": "Table 1"},
     "V3": {"run_id": "V3_L128_b1e-4_critic", "latent_dim": 128, "beta": 1e-4, "use_critic": True, "for": "Table 1"},
     "V4": {"run_id": "V4_L256_b1e-4_critic", "latent_dim": 256, "beta": 1e-4, "use_critic": True, "for": "Table 1"},
@@ -60,7 +60,7 @@ def cmd_fit_gmm(args) -> int:
     from .evaluate import fit_gmm
 
     cfg = _cfg(args)
-    for K in (args.K or [cfg["paper"]["n_components"]]):
+    for K in (args.K or [main_k(cfg)]):
         fit_gmm(cfg, _run_id(args), K, args.reg_rel, args.seed, args.tag)
     return 0
 
@@ -74,7 +74,7 @@ def cmd_vae_eval(args) -> int:
     if args.what == "recon":
         ev.eval_recon(cfg, rid, args.force)
     elif args.what == "gen":
-        ev.eval_generation(cfg, rid, args.source, K or (cfg["paper"]["n_components"] if args.source == "gmm" else None),
+        ev.eval_generation(cfg, rid, args.source, K or (main_k(cfg) if args.source == "gmm" else None),
                            args.tag, args.ldm_run, args.force)
     elif args.what == "cluster":
         ev.eval_clustering(cfg, rid, args.K or cfg["paper"]["n_components_fig11"], args.force)
@@ -124,7 +124,7 @@ def add_commands(sub) -> None:
     p.add_argument("--allow-training", action="store_true", help="also run the gates that train (smoke, overfit, timing)")
     p.set_defaults(fn=cmd_vae_gates)
 
-    p = common(sub.add_parser("train-vae", help="train one VAE configuration of the experiment matrix (300 epochs)"))
+    p = common(sub.add_parser("train-vae", help="train one VAE configuration of the experiment matrix (epochs from the config)"))
     p.add_argument("--experiment", required=True, choices=list(EXPERIMENTS))
     p.add_argument("--resume", action="store_true", help="continue an interrupted run from checkpoints/last.pt")
     p.set_defaults(fn=cmd_train_vae)

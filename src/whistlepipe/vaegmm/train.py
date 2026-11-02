@@ -23,7 +23,7 @@ from ..config import PROJECT_ROOT, canonical_hash
 from ..detector.ridgenet import resolve_device, set_deterministic, sha256_file
 from ..storage import software_versions
 from .config import resolve
-from .data import Prefetcher, WhistleImages, epoch_plan, epoch_seed, random_rot90
+from .data import Prefetcher, epoch_plan, epoch_seed, random_rot90, training_images
 from .losses import critic_loss, vae_loss
 from .models import VAE, Critic, Decoder, n_params, table6_flops
 
@@ -36,7 +36,7 @@ def run_spec(cfg, run_id: str, latent_dim: int | None = None, beta: float | None
             "beta": float(beta if beta is not None else p["beta"]),
             "use_critic": bool(use_critic),
             "lambda_adv": float(p["lambda_adv"]), "lambda_gp": float(p["lambda_gp"]), "n_critic": int(p["n_critic"]),
-            "epochs": int(epochs if epochs is not None else p["epochs"]),
+            "epochs": int(epochs if epochs is not None else dv.get("epochs", p["epochs"])),
             "batch_size": int(dv["batch_size"]), "lr_vae": float(dv["lr_vae"]), "lr_critic": float(dv["lr_critic"]),
             "critic_betas": [float(p["critic_adam_beta1"]), float(p["critic_adam_beta2"])],
             "vae_betas": [float(b) for b in cfg["decisions"]["optim"]["vae_adam_betas"]],
@@ -245,7 +245,7 @@ def train_vae(cfg, spec: dict, resume: bool = False, images=None, out_root: Path
     set_deterministic()
     runtime = apply_runtime_flags(cfg, spec)
     dev = resolve_device(cfg["train"]["device"])
-    images = images if images is not None else WhistleImages(resolve(cfg["paths"]["dataset_dir"]))
+    images = images if images is not None else training_images(cfg)
     trainer = Trainer(spec, images, dev, runtime["micro_batch"])
     if resume and (ck / "last.pt").exists():
         trainer.load(ck / "last.pt")

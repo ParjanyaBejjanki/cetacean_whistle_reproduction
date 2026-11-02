@@ -89,6 +89,11 @@ def load_vaegmm_config(path: str | Path | None = None, overrides: list[str] | No
     return Cfg(raw)
 
 
+def main_k(cfg) -> int:
+    """K used when a command names none: [deviations].n_components if set, else the paper's main K."""
+    return int(cfg["deviations"].get("n_components", cfg["paper"]["n_components"]))
+
+
 def resolve(p: str | Path) -> Path:
     p = Path(p)
     return p if p.is_absolute() else PROJECT_ROOT / p

@@ -72,7 +72,7 @@ def export_examples(device: str | None = None, progress=None) -> dict:
         out.append({"id": eid, "title": f"Encounter {enc} · {when}", "encounter": enc, "source_file": src,
                     "start_s": round(t0, 3), "seconds": float(c["seconds"]), "fs_hz": rate,
                     "audio": f"data/examples/{eid}.flac", "result": f"data/examples/{eid}/result.json",
-                    "n_whistles": len(r["whistles"]), "n_training_whistles_in_window": n_in})
+                    "n_whistles": len(r["whistles"]), "n_dataset_whistles_in_window": n_in})
         say(f"{eid}: {src} from {t0:.2f} s, {len(r['whistles'])} whistles")
     index = {"created_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()), "model": eng.model.status["message"],
              "examples": out}

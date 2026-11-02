@@ -7,7 +7,7 @@ Our answers to every Review-I criterion (Weeks 1–4, **70 marks**), with the nu
 **Our data:** NOAA DCLDE 2022 recordings of false killer whales (HICEAS 2017 survey, ship 1705).
 
 **Status on 1 Nov 2026:**
-- The full dataset is built: 180,154 whistle images.
+- The full dataset is built: 180,154 whistle images. Since 2026-11-02, training uses encounter 191 only (363 files, 63,490 images), for 150 epochs, with K = 3,000.
 - Every pre-training check is done.
 - The main model (V1) has trained 6 of its 300 epochs on a Colab A100.
 - The replacement whistle detector is finished and tested, including a real-data benchmark.
@@ -106,7 +106,7 @@ Cetacean whistles are frequency-modulated tones, and their shapes vary a great d
 | 2 | 12–18 Oct | Data | **M2** Raw data verified; preprocessing validated | Detector threshold calibrated (10 Oct file); check runs on 1 / 5 / 10 / 363 files; detector variants v2a–v2e | README validation record | ✅ (no commits this week) |
 | 3 | 19–25 Oct | Design & implementation | **M3** Dataset built; model, loss and evaluation code; gates | 180,154 images from 8 encounters; manifest of 1,415 files; VAE-GMM code and spec; gates G1, G2, G5, G6; inference and web demo | `8cf3ed4`, `2cf1fc1`, `f6827ce`, `f23674d` (21–24 Oct) | ✅ The dataset build slipped from Week 2. |
 | 4 | 26 Oct – 1 Nov | Training & testing | **M4** Main training started; experiments; Review-I | BCE loss fix; gates G3 and G4; V1 on Colab (6 epochs); 5–24 kHz detector; DCLDE 2011 benchmark | `5925df3`, `63e11ae`, `f388805` (28–31 Oct) | 🟡 V1 partly trained |
-| 5 | 2–8 Nov | Implementation & testing | **M5** Base reproduction done; enhancement 03 built | • Finish V1 (294 epochs, ~30 h on an A100).<br>• Fit the GMM at K = 10k (~7 h).<br>• Paper Tables 1, 2, 3 and 6 and Figs. 7–12.<br>• Three-axis evaluation.<br>• t-SNE of the latents. | — | Planned |
+| 5 | 2–8 Nov | Implementation & testing | **M5** Base reproduction done; enhancement 03 built | • Train V1 on encounter 191 (150 epochs, ~5.3 h on an A100).<br>• Fit the GMM at K = 3,000 (at most ~45 min).<br>• Paper Tables 1, 2, 3 and 6 and Figs. 7–12.<br>• Three-axis evaluation.<br>• t-SNE of the latents. | — | Planned |
 | 6 | 9–15 Nov | Increment 1 | **M6** Enhancement 01 measured | • Differentiable features.<br>• Plausibility ranges.<br>• V1 fine-tuned with the realism loss, plus a control without it (~5 h each, 50 epochs). | — | Planned |
 | 7 | 16–22 Nov | Increment 2 | **M7** Enhancement 02 compared with the paper | • Learned conditional prior.<br>• The paper's 13 conditions: control accuracy, W₁, FFD, P/R/F1 against eqs. 8–10. | — | Planned |
 | 8 | 23–29 Nov | Integration & delivery | **M8** Final evaluation and review | • Three-axis evaluation of all models.<br>• Ablation table.<br>• Update the web demo.<br>• Report, slides, code freeze. | — | Planned |
@@ -181,7 +181,7 @@ What the figure also shows: the file has bursts that reach full scale (clipping,
 - The 2-D whistle image *is* the paper's feature.
 
 **Similarity matrices and t-SNE: planned for Week 5.**
-- They need the trained encoder: a t-SNE of the 180,154 latent means coloured by GMM component, and nearest-neighbour similarity.
+- They need the trained encoder: a t-SNE of the 63,490 latent means coloured by GMM component, and nearest-neighbour similarity.
 - They are part of enhancement 03's novelty axis.
 - What exists now is the per-whistle feature statistics in 2A.
 
@@ -356,7 +356,7 @@ image x (1×128×128)
   ─► Encoder ─► μ, log σ² (64 each) ─► z = μ + σ·ε ─► Decoder ─► x̂ (1×128×128, sigmoid)
                                                           │
                               real x (rotated) ──► Critic ◄┘  (sigmoid score)
-After training:  μ(x) of all 180,154 images (unrotated) ─► GMM, K = 10,000, full covariance (EM)
+After training:  μ(x) of all 63,490 images (unrotated) ─► GMM, K = 3,000, full covariance (EM)
 Generate:        component k ~ π ─► z ~ N(μ_k, Σ_k) ─► Decoder ─► new whistle
 ```
 
@@ -473,7 +473,7 @@ Full detail: [Notes-W-4-filled.md](Notes-W-4-filled.md). Every number: [Notes-W-
 
 | Experiment | Result |
 |---|---|
-| 50 % vs 100 % data | Not run. V1 uses 100 % (180,154 images); the agreed scope is one main training. |
+| 50 % vs 100 % data | Not run as a comparison. Since 2026-11-02, V1 uses encounter 191 only (35 % of the images: 63,490); the agreed scope is one main training. |
 | Augmentation ON vs OFF (detector: v1 vs v2b, with SNR emphasis, crossings and time-reversed backgrounds) | Recall 0.737 → 0.739; paired +14 / −13 whistles, **p = 1 → no effect**. Recall on clear whistles (≥ 10 dB) dropped 3–4 points. |
 | VAE-GMM augmentation (90° rotations) | Always on, as in the paper |
 

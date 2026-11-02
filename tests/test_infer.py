@@ -93,8 +93,9 @@ def test_model_paths_match_the_training_layout():
     assert p["vae"] == resolve(vcfg["paths"]["runs_dir"]) / rid / "checkpoints" / "last.pt"    # train.py: ck/"last.pt" every epoch
     assert p["gmm"] == gmm_dir(vcfg, rid, k) / "gmm.npz"                                        # evaluate.fit_gmm
     from whistlepipe.vaegmm.cli import EXPERIMENTS
+    from whistlepipe.vaegmm.config import main_k
 
-    assert rid == EXPERIMENTS["V1"]["run_id"] and k == vcfg["paper"]["n_components"]
+    assert rid == EXPERIMENTS["V1"]["run_id"] and k == main_k(vcfg)
 
 
 # ----------------------------------------------------------------------------- upload reading

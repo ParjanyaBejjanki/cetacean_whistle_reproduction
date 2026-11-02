@@ -11,10 +11,10 @@
 #   checkpoints/<checkpoint>                     python whistle.py train-vae --experiment V1
 #   gmm_K<n_components>[_<gmm_tag>]/gmm.npz      python whistle.py fit-gmm --experiment V1   (+ gmm.json beside it)
 #   gmm_K<n_components>/component_features.npy   python whistle.py vae-eval components --experiment V1   (conditional generation only)
-run_id       = "V1_L64_b1e-4_critic"   # main model of the paper (L = 64, beta = 1e-4, with critic)
+run_id       = "V1_L64_b1e-4_critic_E191"   # main model of the paper (L = 64, beta = 1e-4, with critic), trained on encounter 191
 checkpoint   = "last.pt"               # [DECISION] newest finished epoch (train.py writes it every epoch; identical to final.pt once
                                        # training ends). A mid-training checkpoint is reported as such (status vae.in_training)
-n_components = 10000                   # [EXPLICIT] main K
+n_components = 3000                    # [DEVIATION] main K for encounter 191 (configs/vaegmm.toml [deviations]; paper K = 10,000)
 gmm_tag      = ""
 device       = "auto"                  # auto | cpu | cuda (detector and model)
 
