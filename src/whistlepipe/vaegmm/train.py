@@ -209,9 +209,7 @@ def check_finite(rec: dict) -> None:
 @torch.no_grad()
 def save_sample_grid(trainer: Trainer, fixed_x: torch.Tensor, path: Path) -> None:
     """Top: real (unrotated); middle: reconstruction (z = mu); bottom: decoder(z ~ N(0, I)) (fixed seed)."""
-    import matplotlib
-    matplotlib.use("Agg")
-    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure      # not pyplot: the plotting backend of the session stays as it is
 
     trainer.vae.eval()
     x = fixed_x.to(trainer.dev)
@@ -223,14 +221,14 @@ def save_sample_grid(trainer: Trainer, fixed_x: torch.Tensor, path: Path) -> Non
     trainer.vae.train()
     rows = [x.cpu().numpy()[:, 0], rec.cpu().numpy()[:, 0], prior.cpu().numpy()[:, 0]]
     n = x.shape[0]
-    fig, axs = plt.subplots(3, n, figsize=(n * 1.1, 3.5))
+    fig = Figure(figsize=(n * 1.1, 3.5))
+    axs = fig.subplots(3, n)
     for r, imgs in enumerate(rows):
         for c in range(n):
             axs[r, c].imshow(imgs[c], cmap="gray", vmin=0, vmax=1)
             axs[r, c].axis("off")
     fig.suptitle(f"epoch {trainer.epoch}: real / reconstruction (z=mu) / N(0,I) sample", fontsize=8)
     fig.savefig(path, dpi=80)
-    plt.close(fig)
 
 
 def train_vae(cfg, spec: dict, resume: bool = False, images=None, out_root: Path | None = None,
@@ -274,8 +272,8 @@ def train_vae(cfg, spec: dict, resume: bool = False, images=None, out_root: Path
     last_epoch = spec["epochs"] if stop_after_epoch is None else min(spec["epochs"], stop_after_epoch)
     for epoch in range(trainer.epoch + 1, last_epoch + 1):
         ep = trainer.run_epoch(epoch, depth=int(cfg["train"]["prefetch"]), log_every=int(cfg["train"]["log_every"]), log_fn=log)
+        trainer.save(ck / "last.pt")          # first: a logged epoch always has its checkpoint, so resume never repeats one
         log({"epoch_summary": True, **ep})
-        trainer.save(ck / "last.pt")
         if epoch % int(cfg["train"]["keep_every"]) == 0 or epoch == spec["epochs"]:
             shutil.copyfile(ck / "last.pt", ck / f"epoch_{epoch:03d}.pt")
         if write_samples and (epoch % int(cfg["train"]["sample_every"]) == 0 or epoch in (1, spec["epochs"])):
@@ -290,6 +288,23 @@ def train_vae(cfg, spec: dict, resume: bool = False, images=None, out_root: Path
                      "wall_s_last_session": round(time.time() - t_start, 1)})
         info_path.write_text(json.dumps(info, indent=2), encoding="utf-8")
     return out
+
+
+def check_final_epochs(run_dir: Path, window: int = 10, rec_ratio: float = 1.05, kl_ratio: float = 2.0) -> dict:
+    """[DECISION] Is the last epoch free of a loss spike? final.pt is always the last epoch (no model selection), so a spike
+    there would reach the GMM. Compares its rec and KL with the median of the ``window`` epochs before it."""
+    ep = {}
+    for line in (Path(run_dir) / "train_log.jsonl").read_text(encoding="utf-8").splitlines():
+        r = json.loads(line)
+        if r.get("epoch_summary"):
+            ep[r["epoch"]] = r
+    last = max(ep)
+    before = [ep[e] for e in sorted(ep) if last - window <= e < last]
+    if not before:
+        raise ValueError("needs the summaries of at least two epochs")
+    rec0, kl0 = float(np.median([r["rec"] for r in before])), float(np.median([r["kl"] for r in before]))
+    return {"healthy": ep[last]["rec"] <= rec_ratio * rec0 and ep[last]["kl"] <= kl_ratio * kl0, "epoch": last,
+            "rec": ep[last]["rec"], "rec_median_before": rec0, "kl": ep[last]["kl"], "kl_median_before": kl0}
 
 
 def load_trained_vae(run_dir: Path, device: torch.device, which: str = "final.pt") -> tuple[VAE, dict]:

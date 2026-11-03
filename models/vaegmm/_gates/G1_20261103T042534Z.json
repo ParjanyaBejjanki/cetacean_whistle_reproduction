@@ -1,0 +1,31 @@
+{
+  "gate": "G1",
+  "criterion": "all images finite, within [0, 1], per-image max == 1; counts equal dataset_info.json",
+  "passed": true,
+  "values": {
+    "n_images": 63490,
+    "n_non_finite": 0,
+    "n_out_of_range": 0,
+    "n_max_not_1": 0,
+    "global_min": 0.0,
+    "global_max": 1.0
+  },
+  "utc": "2026-11-03T04:25:34Z",
+  "config_effective_hash": "ffe17eb286b97d58a5dd4d9f0d13bc2a8721f64351e3acbfdb3aa0c4de4ebbc7",
+  "software": {
+    "python": "3.11.0",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "numpy": "2.4.4",
+    "scipy": "1.17.1",
+    "soundfile": "0.13.1",
+    "libsndfile": "1.2.2",
+    "git_commit": "0151abaceaa6e7a2a0c56db22ba05b15fcd00463",
+    "git_uncommitted_code_changes": true,
+    "torch": "2.14.0+cu130",
+    "cuda_available": true,
+    "tf32_conv_allowed": true,
+    "tf32_matmul_allowed": false,
+    "deterministic_algorithms": false,
+    "cuda_device": "NVIDIA GeForce RTX 5060 Laptop GPU"
+  }
+}

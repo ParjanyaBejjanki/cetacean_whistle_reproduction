@@ -157,21 +157,23 @@ class Prefetcher:
             t = torch.from_numpy(a)[:, None]
             return t.pin_memory() if pin else t
 
+        def put(item):
+            while not self._stop.is_set():
+                try:
+                    self.q.put(item, timeout=0.5)
+                    return
+                except queue.Full:
+                    continue
+
         def work():
             try:
                 for vb, cbs in zip(vae_batches, critic_batches):
                     if self._stop.is_set():
                         return
-                    item = ([to_t(images.gather(c)) for c in cbs], to_t(images.gather(vb)))
-                    while not self._stop.is_set():
-                        try:
-                            self.q.put(item, timeout=0.5)
-                            break
-                        except queue.Full:
-                            continue
-                self.q.put(None)
+                    put(([to_t(images.gather(c)) for c in cbs], to_t(images.gather(vb))))
+                put(None)
             except BaseException as e:   # noqa: BLE001  (surface loader errors in the training thread)
-                self.q.put(e)
+                put(e)
 
         self.thread = threading.Thread(target=work, daemon=True)
         self.thread.start()
@@ -189,10 +191,16 @@ class Prefetcher:
             yield item
 
     def close(self):
+        """Stop the thread and release the batches still queued (their pinned memory)."""
         self._stop.set()
+        self.thread.join()
+        while not self.q.empty():
+            self.q.get_nowait()
 
 
 def random_rot90(x: torch.Tensor, k: torch.Tensor) -> torch.Tensor:
-    """Rotate each image x[i] (B, 1, H, W) counter-clockwise by k[i] * 90 degrees (H == W). No host sync."""
-    rots = torch.stack([torch.rot90(x, r, dims=(2, 3)) for r in range(4)])
-    return rots[k, torch.arange(x.shape[0], device=x.device)]
+    """Rotate each image x[i] (B, 1, H, W) counter-clockwise by k[i] * 90 degrees (H == W)."""
+    out = x.clone()
+    for r in range(1, 4):
+        out[k == r] = torch.rot90(x[k == r], r, dims=(2, 3))
+    return out

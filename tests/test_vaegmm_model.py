@@ -8,10 +8,10 @@ import pytest
 import torch
 
 from whistlepipe.vaegmm.config import TRAINING_PAPER_LOCK, load_vaegmm_config, validate_training_paper_lock
-from whistlepipe.vaegmm.data import SubsetImages, WhistleImages, epoch_plan, random_rot90
+from whistlepipe.vaegmm.data import Prefetcher, SubsetImages, WhistleImages, epoch_plan, random_rot90
 from whistlepipe.vaegmm.losses import adv_neg_log_d, critic_loss, kl_std_normal, recon_bce, recon_sse, vae_loss
 from whistlepipe.vaegmm.models import VAE, Critic, Decoder, Encoder, n_params, table6_flops
-from whistlepipe.vaegmm.train import Trainer, run_spec, train_vae
+from whistlepipe.vaegmm.train import Trainer, check_final_epochs, run_spec, save_sample_grid, train_vae
 
 
 @pytest.fixture(scope="module")
@@ -337,7 +337,61 @@ def test_config_deviations_select_the_data_epochs_and_k(vcfg):
     assert run_spec(d, "t")["epochs"] == 300 and main_k(d) == 10000
 
 
+def test_prefetcher_close_stops_a_blocked_thread_and_empties_the_queue(tmp_path):
+    im = WhistleImages(make_fake_dataset(tmp_path / "pre"))
+    batch = [np.array([0, 1])]
+    pf = Prefetcher(im, batch, [[np.array([2, 3])]], depth=1, pin=False)     # the item fills the queue: put(None) has to wait
+    while not pf.q.full():
+        pass
+    pf.close()
+    assert not pf.thread.is_alive() and pf.q.empty()
+
+
 # ---------------------------------------------------------------- training mechanics (CPU, tiny)
+def test_sample_grid_leaves_the_plotting_backend_alone(vcfg, tmp_path):
+    import matplotlib
+
+    before = matplotlib.rcParams._get("backend")
+    im = WhistleImages(make_fake_dataset(tmp_path / "pre"))
+    tr = Trainer({**run_spec(vcfg, "t"), "latent_dim": 8}, im, torch.device("cpu"))
+    save_sample_grid(tr, torch.from_numpy(im.gather(np.arange(3)))[:, None], tmp_path / "grid.png")
+    assert (tmp_path / "grid.png").stat().st_size > 0 and matplotlib.rcParams._get("backend") == before
+
+
+def test_epoch_interrupted_while_saving_is_not_logged(vcfg, tmp_path, monkeypatch):
+    cfg = fresh_cfg(vcfg)
+    cfg["train"]["device"] = "cpu"
+    im = WhistleImages(make_fake_dataset(tmp_path / "pre"))
+    spec = {**run_spec(cfg, "t", epochs=1), "batch_size": 32, "latent_dim": 8}
+
+    def interrupted(self, path):
+        raise KeyboardInterrupt
+    monkeypatch.setattr(Trainer, "save", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        train_vae(cfg, spec, images=im, out_root=tmp_path / "runs", write_samples=False, quiet=True)
+    log = (tmp_path / "runs" / "t" / "train_log.jsonl")
+    assert not log.exists() or "epoch_summary" not in log.read_text()
+
+
+def test_check_final_epochs_flags_a_spike_and_uses_the_latest_summary(tmp_path):
+    def write(rows):
+        (tmp_path / "train_log.jsonl").write_text("\n".join(json.dumps(r) for r in rows), encoding="utf-8")
+
+    rows = [{"epoch_summary": True, "epoch": e, "rec": 300.0, "kl": 2000.0} for e in range(1, 13)] + [{"epoch": 12, "step": 1, "rec": 900.0}]
+    write(rows)
+    assert check_final_epochs(tmp_path)["healthy"]
+    write(rows + [{"epoch_summary": True, "epoch": 13, "rec": 400.0, "kl": 2000.0}])
+    assert not check_final_epochs(tmp_path)["healthy"]
+    write(rows + [{"epoch_summary": True, "epoch": 13, "rec": 300.0, "kl": 9000.0}])
+    assert not check_final_epochs(tmp_path)["healthy"]
+    write(rows + [{"epoch_summary": True, "epoch": 13, "rec": 400.0, "kl": 2000.0}, {"epoch_summary": True, "epoch": 13, "rec": 301.0, "kl": 2000.0}])
+    r = check_final_epochs(tmp_path)
+    assert r["healthy"] and r["epoch"] == 13 and r["rec"] == 301.0
+    write(rows[:1])
+    with pytest.raises(ValueError):
+        check_final_epochs(tmp_path)
+
+
 def test_trainer_step_updates_both_networks_and_keeps_critic_frozen_in_vae_step(vcfg, tmp_path):
     im = WhistleImages(make_fake_dataset(tmp_path / "pre"))
     spec = {**run_spec(vcfg, "t"), "batch_size": 4, "latent_dim": 8}

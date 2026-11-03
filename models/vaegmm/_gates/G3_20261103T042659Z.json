@@ -1,0 +1,67 @@
+{
+  "gate": "G3",
+  "criterion": "2 epochs x 2,048 images: finite; (a) a trainer restored from the epoch-1 checkpoint equals that checkpoint bit-identically; (b) max |resumed - uninterrupted| <= 10 x max |uninterrupted - repeated uninterrupted| (bit-identical when the repeat is). Revised 2026-10-22: GPU training with the critic is not bit-reproducible even without resume (spec \u00a74)",
+  "passed": true,
+  "values": {
+    "restore_exact": true,
+    "run_to_run_identical": false,
+    "run_to_run_max_abs_diff": 15.692975997924805,
+    "resumed_identical": false,
+    "resumed_max_abs_diff": 15.692975997924805,
+    "within_envelope": true,
+    "epoch_summaries": [
+      {
+        "epoch_summary": true,
+        "loss_d": 1.1691701412200928,
+        "d_real": 0.8974493145942688,
+        "d_fake": 0.5982634425163269,
+        "gp": 0.293671190738678,
+        "gnorm": 0.9285258650779724,
+        "loss_vae": 11309.951171875,
+        "rec": 11309.412109375,
+        "kl": 0.0038642275612801313,
+        "adv": 0.5390273332595825,
+        "epoch": 1,
+        "steps": 16,
+        "epoch_s": 18.9,
+        "loader_wait_s": 0.2
+      },
+      {
+        "epoch_summary": true,
+        "loss_d": 0.04591076076030731,
+        "d_real": 0.9590850472450256,
+        "d_fake": 0.5500246286392212,
+        "gp": 0.09099426120519638,
+        "gnorm": 0.9187556505203247,
+        "loss_vae": 11174.05859375,
+        "rec": 11173.435546875,
+        "kl": 0.34976765513420105,
+        "adv": 0.6231139302253723,
+        "epoch": 2,
+        "steps": 16,
+        "epoch_s": 9.2,
+        "loader_wait_s": 0.0
+      }
+    ],
+    "wall_s": 67.7,
+    "dir": "D:\\ALL\\cetacean_whistle_reproduction\\models\\vaegmm\\_gates\\smoke_20261103T042552Z"
+  },
+  "utc": "2026-11-03T04:26:59Z",
+  "config_effective_hash": "ffe17eb286b97d58a5dd4d9f0d13bc2a8721f64351e3acbfdb3aa0c4de4ebbc7",
+  "software": {
+    "python": "3.11.0",
+    "platform": "Windows-10-10.0.26300-SP0",
+    "numpy": "2.4.4",
+    "scipy": "1.17.1",
+    "soundfile": "0.13.1",
+    "libsndfile": "1.2.2",
+    "git_commit": "0151abaceaa6e7a2a0c56db22ba05b15fcd00463",
+    "git_uncommitted_code_changes": true,
+    "torch": "2.14.0+cu130",
+    "cuda_available": true,
+    "tf32_conv_allowed": false,
+    "tf32_matmul_allowed": false,
+    "deterministic_algorithms": true,
+    "cuda_device": "NVIDIA GeForce RTX 5060 Laptop GPU"
+  }
+}

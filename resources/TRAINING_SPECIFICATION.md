@@ -78,6 +78,7 @@ The goal is fewer Colab compute units, with one training run only.
 - **What results describe:** one session of about 6 hours (29–30 Sep 2017). The real reference set for all metrics is the same 63,490 images.
 - **Rec reference levels** (20k rotated sample, encounter 191): 421.9 = always the average image, 141.6 = a perfect reconstruction. All-data levels were 449.2 and 151.9.
 - **Check at epoch 40** (440 updates) [DECISION]: rec below about 395, and samples no longer all the same blob.
+- **Check of the last epoch** [DECISION]: `final.pt` is always the last epoch, so notebook cell 11 encodes it only if its rec is within 5 % and its KL within a factor of 2 of the median of the 10 epochs before it (`check_final_epochs`). Otherwise the owner decides; choosing an earlier checkpoint would be a reported deviation.
 - **Projected cost:** about 5.3 h and 62 compute units, scaled from 10.75 s per step at B = 5376. Notebook cell 8 measures it.
 - **Gates on encounter 191 (laptop, 2026-11-02):** G1, G2, G3 and G6 passed. G5 is replaced by notebook cell 8 on the A100. G4 was not rerun, so its 2026-10-28 result and owner acceptance stand: it tests the model and loss at B = 128, and neither changed.
 
