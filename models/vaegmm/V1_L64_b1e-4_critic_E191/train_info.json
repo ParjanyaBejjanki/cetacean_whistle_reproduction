@@ -1,0 +1,346 @@
+{
+  "status": "running",
+  "spec": {
+    "run_id": "V1_L64_b1e-4_critic_E191",
+    "latent_dim": 64,
+    "beta": 0.0001,
+    "use_critic": true,
+    "lambda_adv": 1.0,
+    "lambda_gp": 5.0,
+    "n_critic": 3,
+    "epochs": 150,
+    "batch_size": 5772,
+    "lr_vae": 0.006441964285714286,
+    "lr_critic": 0.0012883928571428573,
+    "critic_betas": [
+      0.0,
+      0.9
+    ],
+    "vae_betas": [
+      0.9,
+      0.999
+    ],
+    "adam_eps": 1e-08,
+    "recon": "bce_sum",
+    "tf32": false,
+    "seed": 20261022
+  },
+  "deviations": {
+    "batch_size": 5772,
+    "lr_scaling_rule": "linear",
+    "lr_vae": 0.006441964285714286,
+    "lr_critic": 0.0012883928571428573,
+    "encounters": [
+      191
+    ],
+    "epochs": 150,
+    "n_components": 3000
+  },
+  "config_effective_hash": "d2e5e5eb5068dc7764beabcf3e8e37c220287eaf9fee5cd5ac8753a79c00da64",
+  "config": {
+    "schema_version": 1,
+    "paper": {
+      "latent_dim": 64,
+      "latent_dims_table1": [
+        32,
+        64,
+        128,
+        256
+      ],
+      "beta": 0.0001,
+      "betas_table2": [
+        0.01,
+        0.0001,
+        1e-06
+      ],
+      "lambda_adv": 1.0,
+      "lambda_gp": 5.0,
+      "n_critic": 3,
+      "epochs": 300,
+      "lr_vae": 0.001,
+      "lr_critic": 0.0002,
+      "critic_adam_beta1": 0.0,
+      "critic_adam_beta2": 0.9,
+      "batch_per_gpu": 128,
+      "n_gpus": 7,
+      "rotations_deg": [
+        0,
+        90,
+        180,
+        270
+      ],
+      "n_components": 10000,
+      "n_components_table2": [
+        1000,
+        5000,
+        10000,
+        15000
+      ],
+      "n_components_fig11": [
+        1000,
+        3000,
+        5000,
+        7000,
+        10000,
+        12000,
+        15000
+      ],
+      "em_max_iter": 1500,
+      "em_tol": 1e-08,
+      "contour_threshold": 0.05,
+      "fid1_threshold": 0.1,
+      "fid_input_size": 224,
+      "fid_feature_dim": 2048,
+      "component_samples": 500,
+      "ldm_timesteps": [
+        250,
+        500,
+        1000
+      ],
+      "ldm_batch": 128,
+      "ldm_epochs": 300,
+      "ldm_lr": 0.0005,
+      "ldm_beta_min": 0.0001,
+      "ldm_beta_max": 0.02,
+      "table3_conditions": [
+        {
+          "no": 1,
+          "feature": "L",
+          "lo": 30,
+          "hi": 40
+        },
+        {
+          "no": 2,
+          "feature": "L",
+          "lo": 75,
+          "hi": 80
+        },
+        {
+          "no": 3,
+          "feature": "L",
+          "lo": 88,
+          "hi": 108
+        },
+        {
+          "no": 4,
+          "feature": "f_min",
+          "lo": 34,
+          "hi": 55
+        },
+        {
+          "no": 5,
+          "feature": "f_min",
+          "lo": 40,
+          "hi": 53
+        },
+        {
+          "no": 6,
+          "feature": "f_max",
+          "lo": 62,
+          "hi": 66
+        },
+        {
+          "no": 7,
+          "feature": "f_max",
+          "lo": 68,
+          "hi": 71
+        },
+        {
+          "no": 8,
+          "feature": "df",
+          "lo": 10,
+          "hi": 20
+        },
+        {
+          "no": 9,
+          "feature": "df",
+          "lo": 20,
+          "hi": 30
+        },
+        {
+          "no": 10,
+          "feature": "f_start",
+          "lo": 40,
+          "hi": 55
+        },
+        {
+          "no": 11,
+          "feature": "f_start",
+          "lo": 70,
+          "hi": 80
+        },
+        {
+          "no": 12,
+          "feature": "f_end",
+          "lo": 40,
+          "hi": 55
+        },
+        {
+          "no": 13,
+          "feature": "f_end",
+          "lo": 70,
+          "hi": 80
+        }
+      ]
+    },
+    "deviations": {
+      "batch_size": 5772,
+      "lr_scaling_rule": "linear",
+      "lr_vae": 0.006441964285714286,
+      "lr_critic": 0.0012883928571428573,
+      "encounters": [
+        191
+      ],
+      "epochs": 150,
+      "n_components": 3000
+    },
+    "decisions": {
+      "model": {
+        "logvar_param": true,
+        "init": "glorot_uniform",
+        "critic_norm": "layernorm_chw_per_channel_affine"
+      },
+      "loss": {
+        "recon": "bce_sum",
+        "kl": "analytic_sum",
+        "z_samples": 1,
+        "adv_log": "logsigmoid",
+        "gp_on": "sigmoid_output",
+        "fake_for_critic": "reconstruction"
+      },
+      "optim": {
+        "vae_adam_betas": [
+          0.9,
+          0.999
+        ],
+        "adam_eps": 1e-08,
+        "lr_schedule": "constant"
+      },
+      "train": {
+        "seed": 20261022,
+        "critic_batches": "fresh",
+        "critic_first": true,
+        "partial_last_batch": true,
+        "final_model": "last_epoch",
+        "precision": "fp32"
+      },
+      "gmm": {
+        "input": "encoder_mean_unrotated",
+        "covariance": "full",
+        "init": "kmeans++_hard_assign",
+        "reg_covar_rel": 1e-06,
+        "tol_mode": "relative_mean_loglik",
+        "empty_nk": 1.0,
+        "point_chunk": 2048,
+        "component_chunk": 500
+      },
+      "features": {
+        "bin_convention": "bin = 128 - row",
+        "column_frequency": "mean_active_row",
+        "length": "first_to_last_active",
+        "center_frequency": "midrange",
+        "ms_per_sample": 5.333333333333333,
+        "hz_per_bin": 93.75
+      },
+      "conditional": {
+        "membership": "a_k > 0",
+        "weights_primary": "eq10",
+        "rejection": true
+      },
+      "eval": {
+        "recon_z": "mean",
+        "ssim_sigma": 1.5,
+        "ssim_k1": 0.01,
+        "ssim_k2": 0.03,
+        "fid_weights": "torchvision inception_v3 IMAGENET1K_V1 (download pending approval)",
+        "fid_resize": "bicubic, MATLAB imresize convention (Keys a = -0.5, symmetric boundary), no clamping",
+        "pr_features": "torchvision vgg16 IMAGENET1K_V1 fc2 (download pending approval)",
+        "pr_k": 3,
+        "pr_primary_input": "unthresholded",
+        "n_generated": "n_real",
+        "standard_vae_beta": 1.0,
+        "ldm_one_training_per_T": true
+      }
+    },
+    "paths": {
+      "dataset_dir": "/content/preprocessed",
+      "runs_dir": "/content/drive/MyDrive/whistle_vaegmm_E191/runs"
+    },
+    "train": {
+      "device": "cuda",
+      "log_every": 2,
+      "keep_every": 25,
+      "sample_every": 10,
+      "prefetch": 2,
+      "micro_batch": 0,
+      "cudnn_benchmark": true,
+      "tf32": false
+    }
+  },
+  "dataset": {
+    "dataset_dir": "/content/preprocessed",
+    "dataset_info_sha256": "3a79ae9aa51547706dfc6ad2d63cd9dff5114b835d782edbd88ce3c6e0bfd719",
+    "processing_config_hash": "78f1bb1b6df5eb64d5cf3bad2c965627ba21f41439c63c4265a3c1e83a1dc9d2",
+    "detector_checkpoint_sha256": "c00d66a0e70e5da240a9b01814ca038254c96df506b6663b8d57afb16b0d1b2e",
+    "encounters": [
+      "encounter_191"
+    ],
+    "n_images": 63490,
+    "arrays": {
+      "encounter_191": {
+        "n_images": 63490,
+        "sha256": "83fea6f3119a53ea688ec16e4cec7f79a7773f2d24a02df82f0c1fca67d7864d"
+      }
+    }
+  },
+  "source_sha256": {
+    "src/whistlepipe/vaegmm/__init__.py": "c533804b0f2db53b90ae1e3d3d5fcc270a92932c081a2bc8e04ba5b3007d4f14",
+    "src/whistlepipe/vaegmm/cli.py": "781b173c2f8b04c1e3dcbf7b9e8e7b397587001aadcaa35f5e9e043ba644e22d",
+    "src/whistlepipe/vaegmm/conditional.py": "98ac192409c702717273f4f2230eb6adf3433527f5c2530b0f4150a4a3e5a80a",
+    "src/whistlepipe/vaegmm/config.py": "064338912d2556f1c46f95ab528a53eda31ac117a26082fd820a29e51184e9c0",
+    "src/whistlepipe/vaegmm/data.py": "09df0b8efad72a47f64feda73356d4dad7dea8204f2dc3fe4019316c4b3af660",
+    "src/whistlepipe/vaegmm/evaluate.py": "25ddb0224935ece1dd31445efb55663333d5acefc069babbb04f70411e35113f",
+    "src/whistlepipe/vaegmm/features.py": "521a7e55f980ff5e68142443c532eb4a6476bccccc9400ce25e81b18f239b3f1",
+    "src/whistlepipe/vaegmm/fid.py": "151fba2cd0f28d8b3683ffabe8e739ef3151742e96016c944999a75591ca5c07",
+    "src/whistlepipe/vaegmm/gates.py": "078cb0a3e8c67a23445af191e5def4425340bbce4489e6f42865149ac1107c0f",
+    "src/whistlepipe/vaegmm/gmm.py": "2d19d7eea5d637f299774c8cf19b463d02a2a8aef7b6d9a90bdd722e3d151aab",
+    "src/whistlepipe/vaegmm/ldm.py": "27fc82789fe54d6601bba3156d3f4f172159e950ae13f43f94d171955042ba2a",
+    "src/whistlepipe/vaegmm/losses.py": "aa88e9cabfb51d50355914f90745c1dd1cf31f7e41db17027cdfd6639098cd6b",
+    "src/whistlepipe/vaegmm/metrics.py": "633ee3fb482eb632b12a7073b11ae45540d6f20443fef3664638d120e2214461",
+    "src/whistlepipe/vaegmm/models.py": "81cdcdc069deba79a260da5685a9e5714d16041adf6b0cdd2f8e24d4489e9f10",
+    "src/whistlepipe/vaegmm/train.py": "e8f020ad750a8ffdf4b33ac606803966c62ff6d99cae14729f8178bf2a4b0af5",
+    "configs/vaegmm.toml": "e388667f1b63a6a8d1283a9cc060678e9dd81b343bedecaa6d6cc393172e2a3b"
+  },
+  "software": {
+    "python": "3.13.16",
+    "platform": "Linux-6.6.159+-x86_64-with-glibc2.39",
+    "numpy": "2.4.6",
+    "scipy": "1.16.3",
+    "soundfile": "0.14.0",
+    "libsndfile": "1.2.2",
+    "git_commit": "7eb7a1a36e6470d3e0ec609fd5880f2b8252e9d3",
+    "git_uncommitted_code_changes": false,
+    "code_bundle_created_utc": "2026-11-03T04:29:51Z",
+    "torch": "2.11.0+cu130",
+    "cuda_available": true,
+    "tf32_conv_allowed": false,
+    "tf32_matmul_allowed": false,
+    "deterministic_algorithms": false,
+    "cuda_device": "NVIDIA A100-SXM4-80GB"
+  },
+  "device": "cuda",
+  "runtime": {
+    "tf32": false,
+    "cudnn_benchmark": true,
+    "micro_batch": 0,
+    "prefetch": 2
+  },
+  "n_params": {
+    "encoder": 589408,
+    "decoder": 368097,
+    "critic": 184609
+  },
+  "decoder_table6_flops": 557318144,
+  "steps_per_epoch": 11,
+  "started_utc": "2026-11-03T04:49:28Z"
+}

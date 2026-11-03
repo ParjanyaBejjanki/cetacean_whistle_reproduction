@@ -267,7 +267,7 @@ Sweeps never start before V1 has finished and been evaluated.
 | Feature-network weights | download code present (`fetch-eval-weights --approved`); **not downloaded** (approval pending) |
 | Measured cost | EM at K = 10k on 180,154 × 64 latents: ≈ 17 s per iteration on the RTX 5060 Laptop (memory-bound), so ≤ ≈ 7 h per 1,500-iteration fit. VAE training: gate G5 measured 0.56 s per iteration at B = 128 with the critic on the laptop (66 h projected for 300 epochs); the V1 main run takes about 6 min per epoch on a Colab A100 80 GB (≈ 30 h) |
 | Gates (laptop, B = 128) | G1, G2, G5, G6 passed 2026-10-22; G3 passed 2026-10-28 with the revised criterion (item 19); G4 not met as measured and accepted by the project owner 2026-10-28 (§4); G1, G2, G3 and G6 passed again on encounter 191 on 2026-11-02 (§2.1) |
-| V1 main run | Not started for the encounter-191 scope (§2.1). The earlier all-data run stopped at epoch 7 (`models/vaegmm/V1_L64_b1e-4_critic/`) and is not used. No GMM fit or evaluation result exists yet |
+| V1 main run | Encounter-191 run (§2.1) on a Colab A100 80 GB, commit `7eb7a1a`: log ends in epoch 102, last finished epoch 101 (rec 171.2, step 1,111), 127.9 s per epoch, peak GPU memory 60.2 GiB. No `final.pt`, so `train_info.json` still says `running`. One KL spike at epoch 34 recovered by epoch 38. G1 and G2 passed on the A100. The earlier all-data run stopped at epoch 7 (`models/vaegmm/V1_L64_b1e-4_critic/`) and is not used. No GMM fit or evaluation result exists yet |
 
 ## 4. Validation gates (all must pass before the main run)
 

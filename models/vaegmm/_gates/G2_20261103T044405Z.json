@@ -1,0 +1,43 @@
+{
+  "gate": "G2",
+  "criterion": "max |GPU - CPU| <= 1e-5 for x_hat, mu, logvar and critic output on 16 real images; all losses and gradients finite",
+  "passed": true,
+  "values": {
+    "max_abs_diff": {
+      "x_hat": 5.960464477539063e-08,
+      "mu": 5.122274160385132e-09,
+      "logvar": 4.889443516731262e-09,
+      "critic": 4.76837158203125e-07
+    },
+    "critic_loss": 13.402745246887207,
+    "vae_loss": 11357.5205078125,
+    "d_real": 0.7021063566207886,
+    "d_fake": 0.33839666843414307,
+    "gp": 2.753290891647339,
+    "gnorm": 1.6428825855255127,
+    "rec": 11356.4365234375,
+    "kl": 0.0001011143031064421,
+    "adv": 1.0835366249084473,
+    "critic_grads_finite": true,
+    "vae_grads_finite": true
+  },
+  "utc": "2026-11-03T04:44:05Z",
+  "config_effective_hash": "d2e5e5eb5068dc7764beabcf3e8e37c220287eaf9fee5cd5ac8753a79c00da64",
+  "software": {
+    "python": "3.13.16",
+    "platform": "Linux-6.6.159+-x86_64-with-glibc2.39",
+    "numpy": "2.4.6",
+    "scipy": "1.16.3",
+    "soundfile": "0.14.0",
+    "libsndfile": "1.2.2",
+    "git_commit": "7eb7a1a36e6470d3e0ec609fd5880f2b8252e9d3",
+    "git_uncommitted_code_changes": false,
+    "code_bundle_created_utc": "2026-11-03T04:29:51Z",
+    "torch": "2.11.0+cu130",
+    "cuda_available": true,
+    "tf32_conv_allowed": false,
+    "tf32_matmul_allowed": false,
+    "deterministic_algorithms": true,
+    "cuda_device": "NVIDIA A100-SXM4-80GB"
+  }
+}

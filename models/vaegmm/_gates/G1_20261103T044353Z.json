@@ -1,0 +1,32 @@
+{
+  "gate": "G1",
+  "criterion": "all images finite, within [0, 1], per-image max == 1; counts equal dataset_info.json",
+  "passed": true,
+  "values": {
+    "n_images": 63490,
+    "n_non_finite": 0,
+    "n_out_of_range": 0,
+    "n_max_not_1": 0,
+    "global_min": 0.0,
+    "global_max": 1.0
+  },
+  "utc": "2026-11-03T04:43:53Z",
+  "config_effective_hash": "d2e5e5eb5068dc7764beabcf3e8e37c220287eaf9fee5cd5ac8753a79c00da64",
+  "software": {
+    "python": "3.13.16",
+    "platform": "Linux-6.6.159+-x86_64-with-glibc2.39",
+    "numpy": "2.4.6",
+    "scipy": "1.16.3",
+    "soundfile": "0.14.0",
+    "libsndfile": "1.2.2",
+    "git_commit": "7eb7a1a36e6470d3e0ec609fd5880f2b8252e9d3",
+    "git_uncommitted_code_changes": false,
+    "code_bundle_created_utc": "2026-11-03T04:29:51Z",
+    "torch": "2.11.0+cu130",
+    "cuda_available": true,
+    "tf32_conv_allowed": true,
+    "tf32_matmul_allowed": false,
+    "deterministic_algorithms": false,
+    "cuda_device": "NVIDIA A100-SXM4-80GB"
+  }
+}

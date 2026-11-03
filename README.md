@@ -9,9 +9,10 @@ Preprocessing implements S1–S9 of `resources/PREPROCESSING_SPECIFICATION.md` (
 from it is repeated here beyond what is needed to run and extend the code). The VAE-GMM training, GMM fitting and
 evaluation (`src/whistlepipe/vaegmm/`) follow `resources/TRAINING_SPECIFICATION.md` (see "VAE-GMM" below).
 
-**Status (2026-11-02):** the dataset is built (180,154 images from 8 encounters, see "Dataset record"). The main model
-V1 will train on encounter 191 only (363 files, 63,490 images) for 150 epochs, with K = 3,000; the other encounters stay
-on disk, unused (`resources/TRAINING_SPECIFICATION.md` §2.1). No VAE-GMM results exist yet.
+**Status (2026-11-03):** the dataset is built (180,154 images from 8 encounters, see "Dataset record"). The main model
+V1 trains on encounter 191 only (363 files, 63,490 images), planned for 150 epochs, with K = 3,000; the other encounters
+stay on disk, unused (`resources/TRAINING_SPECIFICATION.md` §2.1). Its log ends in epoch 102; the last finished epoch is 101
+(rec 171.2), saved as `models/vaegmm/V1_L64_b1e-4_critic_E191/checkpoints/last.pt`. There is no `final.pt`, GMM fit or evaluation result yet.
 
 > **Research-integrity statement.** The paper's S5 detector (its reference [31]) and S6 tracker (refs [32], [33]) are
 > unavailable. This project does **not** reproduce them. S5 and S6 here are **newly designed replacements** that satisfy the
